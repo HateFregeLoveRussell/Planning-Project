@@ -21,7 +21,9 @@ class DiscretePlanningProblem:
             
         Methods
         -------
-        TODO write methods descriptions
+        get_prev_states : Given a state, return an array of possible predecessor states.
+
+        get_next_states : Given a state, return an array of possible next states.
     """
 
     def __init__(self,belongingFunction: Callable[[Any], bool], actionFunction: Callable[[Any], Set[Any]], transitionFunction: Callable[[Any, Any], Any], initialState: Any, goalStates: Set[Any], actionSpace: Set[Any] = None, predecessorFunction: Callable[[Any], Set[Any]] = None):
@@ -73,6 +75,12 @@ class DiscretePlanningProblem:
         return [self.transitionFunction(state,action) for action in actions]
 
     def get_prev_states(self, state) -> list:
+        """
+        Given a state, return an array of possible predecessor states.
+        
+        :param state: The current state.
+        :return: List of possible predecessor states.
+        """
         if not self.belongingFunction(state):
             raise ValueError("State Not Found in State Space")
         if self.predecessorFunction is None:

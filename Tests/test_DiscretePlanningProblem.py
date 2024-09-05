@@ -161,7 +161,6 @@ class TestDiscretePlanningProblem(unittest.TestCase):
             self.assertTrue("State Not Found in State Space" in str(context.exception))
     
     #get_prev_states tests
-
     def test_get_prev_states_success_single(self):
         """Test get_prev_states() with single predecessor states"""
         planningProblem = DiscretePlanningProblem(
@@ -231,9 +230,6 @@ class TestDiscretePlanningProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError) as context:
             planningProblem.get_prev_states('Z')
             self.assertTrue("Predecessor Function Not Defined" in str(context.exception))
-    
-
-    
 
 
 if __name__ == '__main__':
