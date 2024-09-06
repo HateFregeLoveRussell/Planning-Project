@@ -1,5 +1,6 @@
 import unittest
-from DiscretePlanning.planningSearch import DiscretePlanningSolver
+from collections import deque
+from DiscretePlanning.planningSearch import DiscretePlanningSolver, ForwardSearch
 from DiscretePlanning.planningProblem import DiscretePlanningProblem
 
 def test_transition_function(state, action):
@@ -72,6 +73,7 @@ class TestDiscretePlanningSolver(unittest.TestCase):
     def test_solver_init(self):
         solver = DiscretePlanningSolver(self.problem)
         self.assertEqual(solver.problem, self.problem)
+        self.assertEqual(solver.solution, [])
 
     #generateSolution    
     def test_generate_solution_not_implemented(self):
@@ -147,6 +149,54 @@ class TestDiscretePlanningSolver(unittest.TestCase):
         options = {'include_indices' : True}
         expected_output = "1. A -> 2. B -> 3. C"
         self.assertEqual(solver.stringifySolution(solution, options), expected_output)
+
+class TestForwardSearch(TestDiscretePlanningSolver):
+    def setUp(self):
+        super().setUp()
+
+    #__init__
+    def test_ForwardSearch_init_success(self):
+        # deque option
+        solver = ForwardSearch(problem=self.problem, queue_options={'type': 'deque'})
+        self.assertEqual(solver.problem, self.problem)
+        self.assertEqual(solver.solution, [])
+        self.assertEqual(solver.queue_type, 'deque')
+        self.assertEqual(solver.frontier, deque())
+
+        # heapq option
+        solver = ForwardSearch(problem=self.problem, queue_options={'type': 'heapq'})
+        self.assertEqual(solver.problem, self.problem)
+        self.assertEqual(solver.solution, [])
+        self.assertEqual(solver.queue_type, 'heapq')
+        self.assertEqual(solver.frontier, [])
+
+    def test_ForwardSearch_init_default(self):
+        solver = ForwardSearch(problem=self.problem)
+        self.assertEqual(solver.problem, self.problem)
+        self.assertEqual(solver.solution, [])
+        self.assertEqual(solver.queue_type, 'deque')
+        self.assertEqual(solver.frontier, deque())
+
+    def test_ForwardSearch_init_invalid_options(self):
+        with self.assertRaises(ValueError) as context:
+            solver = ForwardSearch(problem=self.problem, queue_options={'type': 'invalid type'})
+            self.assertTrue("Invalid Queue Type Provided" in str(context.exception))
+
+    #addToFrontier
+    def test_ForwardSearch_addToFrontier_not_implemented(self):
+        solver = ForwardSearch(problem=self.problem, queue_options={'type': 'deque'})
+        with self.assertRaises(NotImplementedError) as context:
+            solver.addToFrontier('dummyState', 10000)
+            self.assertTrue("addToFrontier must be implemented by subclasses." in str(context.exception))
+    #expandFrontier
+    def test_ForwardSearch_expandFrontier_not_implemented(self):
+        solver = ForwardSearch(problem=self.problem, queue_options={'type': 'deque'})
+        with self.assertRaises(NotImplementedError) as context:
+            solver.expandFrontier()
+            self.assertTrue("expandFrontier must be implemented by subclasses." in str(context.exception))
+
+    #generateSolution - Cant really test without mocking a later implementation we would need anyways
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,9 +1,14 @@
 from typing import Callable, List, Optional, Any
+from collections import deque
+import heapq
 from DiscretePlanning.planningProblem import DiscretePlanningProblem
+
+
 
 class DiscretePlanningSolver:
     def __init__(self, problem: DiscretePlanningProblem):
         self.problem = problem
+        self.solution = []
         return
         
     def generateSolution(self) -> Optional[List[Any]]:
@@ -43,7 +48,7 @@ class DiscretePlanningSolver:
 
         return True
     
-    def stringifySolution(self, solution: List[Any], options={}):
+    def stringifySolution(self, solution: List[Any], options=None):
         """
         Converts the solution path into a formatted string.
 
@@ -55,6 +60,8 @@ class DiscretePlanningSolver:
             - 'include_indices': Bool, whether to include indices (default: False).
         :return: A formatted string representing the solution path.
         """
+        if options is None:
+            options = {}
         separator = options.get('separator', ' -> ')
         state_formatter = options.get('state_formatter', str)
         include_indices = options.get('include_indices', False)
@@ -69,9 +76,58 @@ class DiscretePlanningSolver:
                 formatted_solution.append(f"{i+1}. {formatted_state}")
             else:
                 formatted_solution.append(formatted_state)
-                
-        print (f'sol : {solution}')
-        print (f'sep : {separator}')
-        print (f'formatted_sol : {formatted_solution}')
-        print (f'final output : {separator.join(formatted_solution)}')
+
         return separator.join(formatted_solution)
+
+class ForwardSearch(DiscretePlanningSolver):
+    def __init__(self, problem: DiscretePlanningProblem, queue_options=None):
+        super().__init__(problem)
+        if queue_options is None:
+            queue_options = {}
+        self.queue_type = queue_options.get('type','deque')
+        if self.queue_type == 'deque':
+                self.frontier = deque()
+        elif self.queue_type == 'heapq':
+                self.frontier = [] #empty lists are already heapified
+        else:
+            raise ValueError("Invalid Queue Type Provided")
+        return
+
+    def addToFrontier(self, state: Any, priority: float = None):
+        """Add a state to the frontier. Overridden by specific algorithms."""
+        raise NotImplementedError("addToFrontier must be implemented by subclasses.")
+
+    def expandFrontier(self):
+        """Pop a state from the frontier. Overridden by specific algorithms."""
+        raise NotImplementedError("expandFrontier must be implemented by subclasses.")
+
+    def resolveDuplicateSuccessor(self, state: Any):
+        """Resolve a duplicate successor. Overridden by some specific algorithms."""
+        return
+
+    def generateSolution(self) -> Optional[List[Any]]:
+        problem = self.problem
+        visitedTable = {} # if entry present state visited, value corresponds to preceding value
+        self.addToFrontier(problem.initialState, priority=0)
+        visitedTable[problem.initialState] = None
+        while self.frontier:
+            currentState = self.expandFrontier()
+            if problem.is_goal_state(currentState):
+                self._generateSolutionPath(currentState, visitedTable)
+                return self.solution
+            for successor in problem.get_next_states(currentState):
+                if successor not in visitedTable:
+                    visitedTable[successor] = currentState
+                    self.frontier.append(successor)
+                else:
+                    self.resolveDuplicateSuccessor(successor)
+        return None
+
+    def _generateSolutionPath(self, currentState: Any, visitedTable: dict):
+        self.solution = [currentState]
+        while currentState in visitedTable:
+            currentState = visitedTable[currentState]
+            self.solution.append(visitedTable[currentState])
+
+        self.solution.reverse()
+        return
