@@ -231,6 +231,16 @@ class TestDiscretePlanningProblem(unittest.TestCase):
             planningProblem.get_prev_states('Z')
             self.assertTrue("Predecessor Function Not Defined" in str(context.exception))
 
-
+    def test_isGoalState(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        self.assertFalse(planningProblem.is_goal_state('A'))
+        self.assertTrue(planningProblem.is_goal_state('B'))
 if __name__ == '__main__':
     unittest.main()

@@ -89,6 +89,11 @@ class DiscretePlanningProblem:
         actionStatePairs = self.predecessorFunction(state)
         return [actionStatePair[0] for actionStatePair in actionStatePairs]
 
+    def is_goal_state(self, state: Any) -> bool:
+        """
+        Given a state, return true if state belongs to goal states return false otherwise
 
-    
-
+        :param state: the potential goal state
+        """
+        #TODO: we can achieve this functionality for countable Goal Sets using a callback made by the user
+        return state in self.goalStates
