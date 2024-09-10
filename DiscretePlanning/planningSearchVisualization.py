@@ -1,9 +1,12 @@
 from DiscretePlanning.planningProblem import DiscretePlanningProblem
 from DiscretePlanning.planningSearch import DiscretePlanningSolver, ForwardSearch
 from pathlib import Path
-from typing import Dict, Any
-from json import loads,dumps, dump
+from typing import Dict, Any, Optional, List
+from json import dumps, dump
 from logging import basicConfig, WARNING, warning
+
+from collections import deque
+import heapq
 
 class SearchLogger():
     """
@@ -99,3 +102,71 @@ class SearchLogger():
             safe_entry[safe_key] = safe_value
 
         return safe_entry
+
+class VisualizableForwardSearch(ForwardSearch):
+    def __init__(self, problem: DiscretePlanningProblem, logFile: Path, queue_options: Optional[Dict]=None , createParent: bool = False) -> None:
+        """
+        initializes search class with logfile
+        :param problem: Planning problem to solve, must be an instance of DiscretePlanningProblem
+        :param logFile: Path object representing the logFile
+        :param queue_options: Dictionary of options dictating what kind of priority queue to initialize
+            Possible Options:
+                - 'type' : Indicates the type of priority queue to initialize
+                    Possible Values:
+                        - 'deque' to use deque queue from collections package (used for FIFO/LIFO style implementations)
+                        - 'heapq' to use a binary heap using the heapq package
+        :param createParent: Boolean indicating if the parent directory should be created when missing (default: False)
+        """
+        super().__init__(problem, queue_options)
+        self.logger = SearchLogger(logFile)
+        self.parentOption = createParent
+
+    def generateSolution(self) -> Optional[List[Any]]:
+        problem = self.problem
+        visitedTable = {} # if entry present state visited, value corresponds to preceding value
+        self.addToFrontier(problem.initialState, priority=0)
+        visitedTable[problem.initialState] = None
+        self.logger.logState("Initialization Event", {"Frontier": str(self.frontier), "Visitation Table": visitedTable})
+
+        while self.frontier:
+            currentState = self.expandFrontier()
+            self.logger.logState("State Consideration", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState})
+
+            if problem.is_goal_state(currentState):
+                self.logger.logState("Goal State Recognized", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState})
+
+                self._generateSolutionPath(currentState, visitedTable)
+
+                self.logger.logState("Solution Generated", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Solution" : self.stringifySolution(self.solution)})
+                self.logger.logWrite(options={"createParent": self.parentOption})
+                self.logger.reset()
+                return self.solution
+
+            self.logger.logWrite(options={"createParent": self.parentOption})
+            for successor in problem.get_next_states(currentState):
+                self.logger.logState("Considering Successor", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+                self.logger.logWrite(options={"createParent": self.parentOption})
+                if successor not in visitedTable:
+                    visitedTable[successor] = currentState
+                    self.addToFrontier(successor, from_state=currentState)
+
+                    self.logger.logState("Successor Not Previously Visited, Added to Memory", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+                else:
+                    self.logger.logState("State Previously Visited, Resolving Duplicate", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+
+                    self.resolveDuplicateSuccessor(successor)
+
+        self.logger.logState("No Solution Generated", {"Frontier": self.frontier, "Visitation Table": visitedTable, "Solution": None})
+        self.logger.logWrite(options={"createParent":self.parentOption})
+        self.logger.reset()
+        return None
+# TODO: We can get a good speedup if logger acts concurrently, this way search algorithm does not have to block itself for I/O operations
+    def _generateSolutionPath(self, currentState: Any, visitedTable: Dict):
+        self.solution = []
+        while currentState is not None:
+            self.solution.append(currentState)
+            currentState = visitedTable[currentState]
+
+        self.solution.reverse()
+        return
+

@@ -1,4 +1,4 @@
-from typing import Callable, List, Optional, Any
+from typing import List, Optional, Any, Dict
 from collections import deque
 import heapq
 from DiscretePlanning.planningProblem import DiscretePlanningProblem
@@ -93,11 +93,11 @@ class ForwardSearch(DiscretePlanningSolver):
             raise ValueError("Invalid Queue Type Provided")
         return
 
-    def addToFrontier(self, state: Any, priority: float = None):
+    def addToFrontier(self, state: Any, priority: float = None, from_state: Any = None):
         """Add a state to the frontier. Overridden by specific algorithms."""
         raise NotImplementedError("addToFrontier must be implemented by subclasses.")
 
-    def expandFrontier(self):
+    def expandFrontier(self) -> Any:
         """Pop a state from the frontier. Overridden by specific algorithms."""
         raise NotImplementedError("expandFrontier must be implemented by subclasses.")
 
@@ -118,16 +118,16 @@ class ForwardSearch(DiscretePlanningSolver):
             for successor in problem.get_next_states(currentState):
                 if successor not in visitedTable:
                     visitedTable[successor] = currentState
-                    self.frontier.append(successor)
+                    self.addToFrontier(successor, from_state=currentState)
                 else:
                     self.resolveDuplicateSuccessor(successor)
         return None
 
-    def _generateSolutionPath(self, currentState: Any, visitedTable: dict):
-        self.solution = [currentState]
-        while currentState in visitedTable:
+    def _generateSolutionPath(self, currentState: Any, visitedTable: Dict):
+        self.solution = []
+        while currentState is not None:
+            self.solution.append(currentState)
             currentState = visitedTable[currentState]
-            self.solution.append(visitedTable[currentState])
 
         self.solution.reverse()
         return
