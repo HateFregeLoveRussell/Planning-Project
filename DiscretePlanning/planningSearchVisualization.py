@@ -120,11 +120,12 @@ class VisualizableForwardSearch(ForwardSearch):
         super().__init__(problem, queue_options)
         self.logger = SearchLogger(logFile)
         self.parentOption = createParent
+        self.visitedTable = {}
 
     def generateSolution(self) -> Optional[List[Any]]:
         problem = self.problem
-        visitedTable = {} # if entry present state visited, value corresponds to preceding value
-        self.addToFrontier(problem.initialState, priority=0)
+        visitedTable = self.visitedTable # if entry present state visited, value corresponds to preceding value
+        self.addToFrontier(problem.initialState)
         visitedTable[problem.initialState] = None
         self.logger.logState("Initialization Event", {"Frontier": str(self.frontier), "Visitation Table": visitedTable})
 
@@ -143,24 +144,31 @@ class VisualizableForwardSearch(ForwardSearch):
                 return self.solution
 
             self.logger.logWrite(options={"createParent": self.parentOption})
-            for successor in problem.get_next_states(currentState):
-                self.logger.logState("Considering Successor", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+            for action in problem.actionFunction(currentState):
+                successor = problem.transitionFunction(currentState, action)
+                self.logger.logState("Considering Successor",
+                                     {"Frontier": str(self.frontier), "Visitation Table": visitedTable,
+                                      "State": currentState, "Successor": successor, "Action": action})
                 self.logger.logWrite(options={"createParent": self.parentOption})
                 if successor not in visitedTable:
                     visitedTable[successor] = currentState
-                    self.addToFrontier(successor, from_state=currentState)
+                    self.addToFrontier(successor, currentState, action)
 
-                    self.logger.logState("Successor Not Previously Visited, Added to Memory", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+                    self.logger.logState("Successor Not Previously Visited, Added to Memory",
+                                         {"Frontier": str(self.frontier), "Visitation Table": visitedTable,
+                                          "State": currentState, "Successor": successor, "Action": action})
                 else:
-                    self.logger.logState("State Previously Visited, Resolving Duplicate", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Successor": successor})
+                    self.logger.logState("State Previously Visited, Resolving Duplicate",
+                                         {"Frontier": str(self.frontier), "Visitation Table": visitedTable,
+                                          "State": currentState, "Successor": successor, "Action": action})
 
-                    self.resolveDuplicateSuccessor(successor)
+                    self.resolveDuplicateSuccessor(successor, currentState, action)
 
         self.logger.logState("No Solution Generated", {"Frontier": self.frontier, "Visitation Table": visitedTable, "Solution": None})
         self.logger.logWrite(options={"createParent":self.parentOption})
         self.logger.reset()
         return None
-# TODO: We can get a good speedup if logger acts concurrently, this way search algorithm does not have to block itself for I/O operations
+    # TODO: We can get a good speedup if logger acts concurrently, this way search algorithm does not have to block itself for I/O operations
     def _generateSolutionPath(self, currentState: Any, visitedTable: Dict):
         self.solution = []
         while currentState is not None:

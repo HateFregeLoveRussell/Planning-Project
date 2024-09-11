@@ -3,7 +3,7 @@ from DiscretePlanning.planningProblem import DiscretePlanningProblem
 import unittest
 from typing import Any, Set
 from pathlib import Path
-from os import remove
+from os import remove, rmdir
 
 class testForwardBFS(unittest.TestCase):
     def actionFunction(self,state: str) -> Set[str]:
@@ -45,11 +45,12 @@ class testForwardBFS(unittest.TestCase):
 
         #Logging Set Up
         self.logFile = Path("Tests/TestPath/ForwardBFS.json")
-        createParent = False
+        createParent = True
         self.solver = ForwardBFS(self.problem, self.logFile, createParent)
 
     def tearDown(self):
-        remove(self.logFile)
+        # remove(self.logFile)
+        # rmdir(self.logFile.parent)
         return
 
     def test_BFS(self):
@@ -97,11 +98,12 @@ class testForwardDFS(unittest.TestCase):
 
         #Logging Set Up
         self.logFile = Path("Tests/TestPath/ForwardDFS.json")
-        createParent = False
+        createParent = True
         self.solver = ForwardDFS(self.problem, self.logFile, createParent)
 
     def tearDown(self):
-        remove(self.logFile)
+        # remove(self.logFile)
+        # rmdir(self.logFile.parent)
         return
 
     def test_DFS(self):

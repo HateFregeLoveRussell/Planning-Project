@@ -8,7 +8,7 @@ class ForwardBFS(VisualizableForwardSearch):
         queueOptions = {'type' : 'deque'}
         super().__init__(problem, logFile, queueOptions, createParent)
 
-    def addToFrontier(self, state: Any, priority: float = None, from_state: Any = None):
+    def addToFrontier(self, state: Any, currentState: Any = None, action: Any = None ):
         self.frontier.append(state)
 
     def expandFrontier(self) -> Any:
@@ -19,9 +19,8 @@ class ForwardDFS(VisualizableForwardSearch):
         queueOptions = {'type' : 'deque'}
         super().__init__(problem, logFile, queueOptions, createParent)
 
-    def addToFrontier(self, state: Any, priority: float = None, from_state: Any = None):
+    def addToFrontier(self, state: Any, currentState: Any = None, action: Any = None):
         self.frontier.append(state)
-
 
     def expandFrontier(self) -> Any:
         return self.frontier.pop() #LIFO behaviour enabled
