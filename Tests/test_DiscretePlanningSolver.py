@@ -161,12 +161,14 @@ class TestForwardSearch(TestDiscretePlanningSolver):
         self.assertEqual(solver.problem, self.problem)
         self.assertEqual(solver.solution, [])
         self.assertEqual(solver.queue_type, 'deque')
+        self.assertEqual(solver.visitedTable, {})
         self.assertEqual(solver.frontier, deque())
 
         # heapq option
         solver = ForwardSearch(problem=self.problem, queue_options={'type': 'heapq'})
         self.assertEqual(solver.problem, self.problem)
         self.assertEqual(solver.solution, [])
+        self.assertEqual(solver.visitedTable, {})
         self.assertEqual(solver.queue_type, 'heapq')
         self.assertEqual(solver.frontier, [])
 
@@ -176,6 +178,7 @@ class TestForwardSearch(TestDiscretePlanningSolver):
         self.assertEqual(solver.solution, [])
         self.assertEqual(solver.queue_type, 'deque')
         self.assertEqual(solver.frontier, deque())
+        self.assertEqual(solver.visitedTable, {})
 
     def test_ForwardSearch_init_invalid_options(self):
         with self.assertRaises(ValueError) as context:

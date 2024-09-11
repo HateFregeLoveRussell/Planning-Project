@@ -82,6 +82,7 @@ class DiscretePlanningSolver:
 class ForwardSearch(DiscretePlanningSolver):
     def __init__(self, problem: DiscretePlanningProblem, queue_options=None):
         super().__init__(problem)
+        self.visitedTable = {}
         if queue_options is None:
             queue_options = {}
         self.queue_type = queue_options.get('type','deque')
@@ -93,7 +94,7 @@ class ForwardSearch(DiscretePlanningSolver):
             raise ValueError("Invalid Queue Type Provided")
         return
 
-    def addToFrontier(self, state: Any, priority: float = None, from_state: Any = None):
+    def addToFrontier(self, state: Any, currentState: Any = None, action: Any = None ):
         """Add a state to the frontier. Overridden by specific algorithms."""
         raise NotImplementedError("addToFrontier must be implemented by subclasses.")
 
@@ -101,26 +102,29 @@ class ForwardSearch(DiscretePlanningSolver):
         """Pop a state from the frontier. Overridden by specific algorithms."""
         raise NotImplementedError("expandFrontier must be implemented by subclasses.")
 
-    def resolveDuplicateSuccessor(self, state: Any):
+    def resolveDuplicateSuccessor(self, state: Any, currentState: Any = None, action: Any = None):
         """Resolve a duplicate successor. Overridden by some specific algorithms."""
         return
 
     def generateSolution(self) -> Optional[List[Any]]:
         problem = self.problem
-        visitedTable = {} # if entry present state visited, value corresponds to preceding value
-        self.addToFrontier(problem.initialState, priority=0)
+        visitedTable = self.visitedTable # if entry present state visited, value corresponds to preceding value
+        self.addToFrontier(problem.initialState)
         visitedTable[problem.initialState] = None
         while self.frontier:
             currentState = self.expandFrontier()
+
             if problem.is_goal_state(currentState):
                 self._generateSolutionPath(currentState, visitedTable)
                 return self.solution
-            for successor in problem.get_next_states(currentState):
+
+            for action in problem.actionFunction(currentState):
+                successor = problem.transitionFunction(currentState, action)
                 if successor not in visitedTable:
                     visitedTable[successor] = currentState
-                    self.addToFrontier(successor, from_state=currentState)
+                    self.addToFrontier(successor, currentState, action)
                 else:
-                    self.resolveDuplicateSuccessor(successor)
+                    self.resolveDuplicateSuccessor(successor, currentState, action)
         return None
 
     def _generateSolutionPath(self, currentState: Any, visitedTable: Dict):
