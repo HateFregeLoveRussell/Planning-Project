@@ -78,7 +78,8 @@ class DiscretePlanningSolver:
                 formatted_solution.append(formatted_state)
 
         return separator.join(formatted_solution)
-
+# TODO: it might be better for a solution to be represented as a list of state action pairs
+#       this way solutions to multi-graph state-transition graphs are not ambiguous
 class ForwardSearch(DiscretePlanningSolver):
     def __init__(self, problem: DiscretePlanningProblem, queue_options=None):
         super().__init__(problem)
