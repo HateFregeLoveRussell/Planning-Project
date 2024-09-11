@@ -49,8 +49,8 @@ class testForwardBFS(unittest.TestCase):
         self.solver = ForwardBFS(self.problem, self.logFile, createParent)
 
     def tearDown(self):
-        # remove(self.logFile)
-        # rmdir(self.logFile.parent)
+        remove(self.logFile)
+        rmdir(self.logFile.parent)
         return
 
     def test_BFS(self):
@@ -102,8 +102,8 @@ class testForwardDFS(unittest.TestCase):
         self.solver = ForwardDFS(self.problem, self.logFile, createParent)
 
     def tearDown(self):
-        # remove(self.logFile)
-        # rmdir(self.logFile.parent)
+        remove(self.logFile)
+        rmdir(self.logFile.parent)
         return
 
     def test_DFS(self):
