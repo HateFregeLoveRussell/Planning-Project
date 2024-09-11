@@ -21,11 +21,11 @@ def test_predecessor_function(state) -> set:
         case('A'):
             return set(())
         case('B'):
-            return set([('A','right'),('C','left')])
+            return {('A', 'right'), ('C', 'left')}
         case('C'):
-            return set([('B', 'right'),('D','left')])
+            return {('B', 'right'), ('D', 'left')}
         case('D'):
-            return set([('C','right')])
+            return {('C', 'right')}
         case('Z'):
             return set(())
         case _:
@@ -34,13 +34,13 @@ def test_predecessor_function(state) -> set:
 def test_action_function(state) -> set:
     match(state):
         case('A'):
-            return set(['right'])
+            return {'right'}
         case('B'):
-            return set(['right'])
+            return {'right'}
         case('C'):
-            return set(['right', 'left'])
+            return {'right', 'left'}
         case('D'):
-            return set(['left'])
+            return {'left'}
         case('Z'):
             return set([])
         case _:
@@ -231,6 +231,7 @@ class TestDiscretePlanningProblem(unittest.TestCase):
             planningProblem.get_prev_states('Z')
             self.assertTrue("Predecessor Function Not Defined" in str(context.exception))
 
+    # is_goal_state
     def test_isGoalState(self):
         planningProblem = DiscretePlanningProblem(
             actionFunction=self.actionFunction,
@@ -242,5 +243,81 @@ class TestDiscretePlanningProblem(unittest.TestCase):
         )
         self.assertFalse(planningProblem.is_goal_state('A'))
         self.assertTrue(planningProblem.is_goal_state('B'))
+
+    #get_cost
+    def cost_function_valid(self, state, action):
+        return float(2)
+    def cost_function_invalid_type(self, state, action):
+        return {-1:-1}
+    def cost_function_invalid_range(self, state, action):
+        return float(-1)
+
+    def test_getCost_success(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            costFunction = self.cost_function_valid,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        self.assertEqual(planningProblem.get_cost(state= 'C',action='right'), 2)
+
+    def test_getCost_invalid_state(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            costFunction = self.cost_function_valid,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        with self.assertRaises(ValueError) as context:
+            planningProblem.get_cost(state= 'L',action='right')
+            self.assertTrue("State not in State Space" in str(context.exception))
+    def test_getCost_invalid_action(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            costFunction = self.cost_function_valid,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        with self.assertRaises(ValueError) as context:
+            planningProblem.get_cost(state= 'A',action='up')
+            self.assertTrue("Action not in action set associated with State" in str(context.exception))
+
+    def test_getCost_invalid_function_invalid_type(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            costFunction=self.cost_function_invalid_type,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        with self.assertRaises(ValueError) as context:
+            self.assertEqual(planningProblem.get_cost(state='C', action='right'), 2)
+            self.assertTrue("Returned cost is not a float" in str(context.exception))
+
+    def test_getCost_invalid_function_invalid_range(self):
+        planningProblem = DiscretePlanningProblem(
+            actionFunction=self.actionFunction,
+            belongingFunction=self.belongingFunction,
+            transitionFunction=self.transitionFunction,
+            costFunction=self.cost_function_invalid_range,
+            actionSpace=self.actionSpace,
+            initialState=self.initialState,
+            goalStates=self.goalStates
+        )
+        with self.assertRaises(ValueError) as context:
+            self.assertEqual(planningProblem.get_cost(state='C', action='right'), 2)
+            self.assertTrue("Returned cost is negative" in str(context.exception))
+
 if __name__ == '__main__':
     unittest.main()

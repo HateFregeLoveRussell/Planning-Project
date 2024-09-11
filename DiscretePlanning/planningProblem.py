@@ -26,7 +26,7 @@ class DiscretePlanningProblem:
         get_next_states : Given a state, return an array of possible next states.
     """
 
-    def __init__(self,belongingFunction: Callable[[Any], bool], actionFunction: Callable[[Any], Set[Any]], transitionFunction: Callable[[Any, Any], Any], initialState: Any, goalStates: Set[Any], actionSpace: Set[Any] = None, predecessorFunction: Callable[[Any], Set[Any]] = None):
+    def __init__(self,belongingFunction: Callable[[Any], bool], actionFunction: Callable[[Any], Set[Any]], transitionFunction: Callable[[Any, Any], Any], initialState: Any, goalStates: Set[Any], actionSpace: Set[Any] = None, predecessorFunction: Callable[[Any], Set[Any]] = None, costFunction :Callable = None):
         """
         Initialize the planning problem.
         
@@ -37,6 +37,7 @@ class DiscretePlanningProblem:
         :param initialState: The initial state of the problem represented as a string as in stateSpace
         :param goalStates: A set of goal states for the planning Problem
         :param actionSpace: A set object corresponding to the union of action sets across all sets - optional
+        :param costFunction: A function that takes a state and an action as input and gives a non-negative (float) cost associated with the transition as output
         """
         # belonging function f: X -> T/F
         self.belongingFunction = belongingFunction
@@ -50,6 +51,9 @@ class DiscretePlanningProblem:
         # predecessor function f: X -> U^{-1}(x)
         self.predecessorFunction = predecessorFunction
 
+        # cost function f: X x U(x) -> R^+
+        self.costFunction = costFunction
+
         if not belongingFunction(initialState):
             raise ValueError("Initial State not in State Space")
         self.initialState = initialState
@@ -59,6 +63,28 @@ class DiscretePlanningProblem:
         self.goalStates = goalStates
         
         self.actionSpace = actionSpace
+
+    def get_cost(self,state: Any, action: Any) -> float:
+        """
+        Given a state and an action associated with the state will return cost of transition
+        Should be used instead of calling self.costFunction directly
+        :param state: The current State belonging to the defined State Space
+        :param action:  An action associated with the state, should belong to action space of the state
+        :return: a non-negative cost obtained through user provided callback
+        """
+        #gaurd against malformed inputs
+        if not self.belongingFunction(state):
+            raise ValueError("State not in State Space")
+        if action not in self.actionFunction(state):
+            raise ValueError("Action not in action set associated with State")
+
+        cost = self.costFunction(state, action)
+        if type(cost) != float:
+            raise ValueError("Returned cost is not a float")
+        if cost < 0:
+            raise ValueError("Returned cost is negative")
+
+        return cost
 
     def get_next_states(self, state) -> list: 
         """
