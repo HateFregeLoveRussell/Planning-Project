@@ -34,6 +34,7 @@ class HillClimber:
         coordinates = literal_eval(state)
         x, y = coordinates[0], coordinates[1]
         actionSet = set()
+        #rectilinear transitions
         if x == 0:
             actionSet.add('right')
         elif x == self.size[0] - 1:
@@ -49,6 +50,36 @@ class HillClimber:
         else:
             actionSet.add('down')
             actionSet.add('up')
+
+        #Diagonal Transitions:
+        #boundary Cases
+        if x ==0 or x==self.size[0]-1 or y ==0 or y==self.size[1]-1:
+            if (x,y) == (0,0):
+                actionSet.add('up-right')
+            elif (x,y) == (self.size[0]-1,0):
+                actionSet.add('up-left')
+            elif (x,y) == (self.size[0]-1,self.size[1]-1):
+                actionSet.add('down-left')
+            elif (x,y) == (0,self.size[1]-1):
+                actionSet.add('down-right')
+            elif x == 0:
+                actionSet.add('down-right')
+                actionSet.add('up-right')
+            elif y == 0:
+                actionSet.add('up-right')
+                actionSet.add('up-left')
+            elif x == self.size[0]-1:
+                actionSet.add('down-left')
+                actionSet.add('up-left')
+            elif y == self.size[1]-1:
+                actionSet.add('down-right')
+                actionSet.add('down-left')
+        else:
+            actionSet.add('up-right')
+            actionSet.add('up-left')
+            actionSet.add('down-right')
+            actionSet.add('down-left')
+
         return actionSet
 
     def _transitionFunction(self, state: str, action: str) -> str:
@@ -60,8 +91,20 @@ class HillClimber:
             x -=1
         elif action == 'up':
             y +=1
-        else:
+        elif action == 'down':
             y -=1
+        elif action == 'down-right':
+            x += 1
+            y -= 1
+        elif action == 'down-left':
+            x -= 1
+            y -= 1
+        elif action == 'up-right':
+            y += 1
+            x += 1
+        elif action == 'up-left':
+            y += 1
+            x -= 1
         return repr((x,y))
 
     def _costFunction(self, state: str, action: str) -> float:
