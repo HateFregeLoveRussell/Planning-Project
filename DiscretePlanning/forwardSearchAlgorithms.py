@@ -4,9 +4,6 @@ from pathlib import Path
 from typing import Any, Callable
 import heapq
 
-from pylsp.hookspecs import pylsp_completion_item_resolve
-
-
 class ForwardBFS(VisualizableForwardSearch):
     def __init__(self, problem : DiscretePlanningProblem, logFile : Path, createParent: bool = False) -> None:
         queueOptions = {'type' : 'deque'}

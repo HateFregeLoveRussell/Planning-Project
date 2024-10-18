@@ -5,9 +5,6 @@ from pathlib import Path
 import numpy as np
 from ast import literal_eval
 
-from sympy.physics.units import liter
-
-
 # Define the height function
 def test_height_function(x: int, y: int) -> float:
     peak1 = 20 * np.exp(-((x - 8)**2 + (y - 8)**2) / 20)

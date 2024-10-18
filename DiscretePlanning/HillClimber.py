@@ -1,9 +1,7 @@
 from DiscretePlanning.planningSearchVisualization import VisualizableForwardSearch
 from DiscretePlanning.planningProblem import DiscretePlanningProblem
 import numpy as np
-from typing import Any, Set, Tuple, Callable
-from pathlib import Path
-import plotly.graph_objs as go
+from typing import Set, Tuple, Callable
 from ast import literal_eval
 
 

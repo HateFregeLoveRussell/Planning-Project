@@ -6,6 +6,7 @@ from os import remove, rmdir
 from math import sqrt
 import unittest
 import re
+
 class test_AStar(unittest.TestCase):
     def special_costFunction(self, state: str, action: str) -> float:
         #set up high-cost barrier at a diagonal. Lowest cost path should go under and move vertically to goal
@@ -100,8 +101,10 @@ class test_AStar(unittest.TestCase):
         self.solver = ForwardAStar(problem = self.problem, logFile = self.logFile,heuristic=self.hueristicFunction,createParent= createParent)
 
     def tearDown(self):
-        remove(self.logFile)
-        rmdir(self.logFile.parent)
+        log_dir = self.logFile.parent
+        for log in log_dir.glob(f"{self.logFile.stem}*"):
+            remove(log)
+        rmdir(log_dir)
         return
 
     def test_AStar_success(self):
@@ -117,3 +120,4 @@ class test_AStar(unittest.TestCase):
 if __name__ == '__main__':
     unittest.main()
     #TODO: weird bug where initial cost calculations appear before initialization event
+    #TODO: Include Optimality and Null Heuristic Tests
