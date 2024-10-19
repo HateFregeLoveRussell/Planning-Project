@@ -21,7 +21,6 @@ class TestSearchLogger(unittest.TestCase):
             os.rmdir(self.existing_dir)
         if self.non_existing_dir.exists():
             os.rmdir(self.non_existing_dir)
-
     #init
     def test_logger_init_success(self):
         self.logger = SearchLogger(self.logFile)
@@ -138,14 +137,14 @@ class TestSearchLogger(unittest.TestCase):
         }
 
         logger.logState(event, entry)
-        logger.reset()
+        logger._reset()
         self.assertEqual(logger.log_entries, [])
 
     #changeLogFile
     def test_logger_changeLogFile_success(self):
         logFile2 = Path("TestPath/TestLogger2.txt")
         logger = SearchLogger(self.logFile)
-        logger.changeLogFile(logFile2)
+        logger._changeLogFile(logFile2)
         self.assertEqual(logger.logFile, logFile2)
 
     #logWrite
@@ -158,20 +157,24 @@ class TestSearchLogger(unittest.TestCase):
 
         logger.logWrite()
 
+        logger.closeLog()
+
         with open(self.logFile, 'r') as f:
             logData = json.load(f)
 
-        expected_logData = [{"Event": event, "Entry": entry}]
+        expected_logData = [{"Event": event, "Entry": entry, "Log Entry Number": 1}]
         self.assertEqual(logData, expected_logData)
 
     def test_log_write_empty(self):
         logger = SearchLogger(self.logFile)
         logger.logWrite()
+        logger.closeLog()
 
         with open(self.logFile, 'r') as f:
-            logData = json.load(f)
+            logData = f.read()
 
-        self.assertEqual(logData, [])
+        self.assertEqual(logData, "")
+
 
     def test_log_wtire_multiple_entries(self):
         logger = SearchLogger(self.logFile)
@@ -189,14 +192,15 @@ class TestSearchLogger(unittest.TestCase):
             logger.logState(entry["Event"], entry["Entry"])
 
         logger.logWrite()
+        logger.closeLog()
 
         with open(self.logFile, 'r') as f:
             log_data = json.load(f)
-
-        self.assertEqual(log_data, entries)
+        updated_entries = [{**entry, "Log Entry Number": i +1} for i, entry in enumerate(entries)]
+        self.assertEqual(log_data, updated_entries)
 
     def test_log_write_overwrite(self):
-        logger = SearchLogger(self.logFile)
+        logger = SearchLogger(self.logFile, 40000)
         entries = [
             {
                 "Event": "expand_node_special",
@@ -228,10 +232,13 @@ class TestSearchLogger(unittest.TestCase):
 
         logger.logWrite()
 
+        logger.closeLog()
         with open(self.logFile, 'r') as f:
             log_data = json.load(f)
 
-        self.assertEqual(log_data, entries + newEntries)
+        updated_entries = [{**entry, "Log Entry Number": i +1} for i, entry in enumerate(entries)]
+        updated_newEntries = [{**entry, "Log Entry Number": j + len(entries) + 1} for j, entry in enumerate(newEntries)]
+        self.assertEqual(log_data, updated_entries + updated_newEntries)
 
     def test_log_write_directory_does_not_exist_no_create_option(self):
         logger = SearchLogger(self.non_existing_log_file)
@@ -240,7 +247,10 @@ class TestSearchLogger(unittest.TestCase):
 
         with self.assertRaises(ValueError) as context:
             logger.logWrite()
+
+        logger.closeLog()
         self.assertTrue(f'Parent Directory {self.non_existing_dir} does not exist' in str(context.exception))
+
 
     def test_log_write_directory_does_not_exist_create_option(self):
         logger = SearchLogger(self.non_existing_log_file)
@@ -248,6 +258,11 @@ class TestSearchLogger(unittest.TestCase):
         logger.logState(entry["Event"], entry["Entry"])
 
         logger.logWrite(options={"createParent": True})
+
+        logger.closeLog()
+
+        entry.update({"Log Entry Number": 1})
+
         with open(self.non_existing_log_file, 'r') as file:
             log_data = json.load(file)
             self.assertEqual(log_data, [entry])

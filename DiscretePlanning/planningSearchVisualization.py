@@ -5,25 +5,14 @@ from typing import Dict, Any, Optional, List
 from json import dumps, dump
 from logging import basicConfig, WARNING, warning
 
-from collections import deque
-import heapq
 MAX_LINES_PER_FILE = 20000
 
 class SearchLogger():
-    """
-    Logger class intended for saving search state in JSON format as search progresses.
-    Log data later to be used for visualization or debugging purposes, with package of user's choosing
-    """
-
-    """
-    Logger class intended for saving search state in JSON format as search progresses.
-    Log data later to be used for visualization or debugging purposes, with package of user's choosing
-    """
-
     def __init__(self, logFile: Path, maxLines: int = MAX_LINES_PER_FILE) -> None:
         """
         Initializes an instance of search logger
         :param logFile: path to Logfile, by default relative to repository root
+        :param maxLine: Optional, determines threshold after which the logFile is switched to a new index
         """
         self.logFile = logFile
         self.stem = logFile.stem
@@ -52,17 +41,7 @@ class SearchLogger():
 
         return
 
-    def _switchLogFile(self):
-        """
-        Switches to a new log file when the current one reaches the line limit.
-        """
-        self.file_index += 1
-        self.lines = 0  # Reset line counter
-        new_log_file = self.logFile.with_stem(f"{self.stem}_{self.file_index}")
-        self.changeLogFile(new_log_file)
-        self.reset()
-
-    def logWrite(self, options=None) -> None:
+    def logWrite(self, options= None) -> None:
         """
         Writes current log entirely to log file, does not clear log entries use reset() for this
         Ensures that the directory exists before writing.
@@ -88,10 +67,10 @@ class SearchLogger():
         is_new_file = not self.logFile.exists()
 
         with open(self.logFile.resolve(), 'a') as file:
-            if is_new_file:
-                file.write("[\n")
 
             for i, entry in enumerate(self.log_entries):
+                if is_new_file and i == 0:
+                    file.write("[\n")
                 entry.update({"Log Entry Number": self.entryNumber})
                 self.entryNumber += 1
                 json_entry = dumps(entry, indent=4)
@@ -102,28 +81,45 @@ class SearchLogger():
                 self.lines += json_entry.count('\n') + 1
 
         if self.lines >= self.maxLines:
-            self._closeLog()
+            self.closeLog()
             self._switchLogFile()
 
-        self.reset()
+        self._reset()
         return
 
-
-    def _closeLog(self) -> None:
+    def closeLog(self) -> None:
         """
         Closes the JSON array in the log file, ensuring valid JSON formatting.
+        Must be called at the end of execution of search algorithm
         """
-        with open(self.logFile.resolve(), 'a') as file:
-            file.write("\n]")
+        is_new_file = not self.logFile.exists()
+        if is_new_file:
+            return
 
-    def reset(self) -> None:
+        with open(self.logFile.resolve(), 'r+') as file:
+            content = file.read().strip()
+            if content and content[-1] != ']':
+                file.seek(0, 2)  # Move to the end of the file
+                file.write("\n]")
+
+    def _switchLogFile(self):
+        """
+        Switches to a new log file when the current one reaches the line limit.
+        """
+        self.file_index += 1
+        self.lines = 0  # Reset line counter
+        new_log_file = self.logFile.with_stem(f"{self.stem}_{self.file_index}")
+        self._changeLogFile(new_log_file)
+        self._reset()
+
+    def _reset(self) -> None:
         """
         Resets log entries to empty list
         """
         self.log_entries=[]
         return
 
-    def changeLogFile(self, logFile: Path)-> None:
+    def _changeLogFile(self, logFile: Path)-> None:
         """
         Change log file for logger class
         :param logFile: string corresponding to new log file directory
@@ -192,7 +188,8 @@ class VisualizableForwardSearch(ForwardSearch):
 
                 self.logger.logState("Solution Generated", {"Frontier": str(self.frontier), "Visitation Table": visitedTable, "State": currentState, "Solution" : self.stringifySolution(self.solution)})
                 self.logger.logWrite(options={"createParent": self.parentOption})
-                self.logger.reset()
+                self.logger.closeLog()
+                self.logger._reset()
                 return self.solution
 
             self.logger.logWrite(options={"createParent": self.parentOption})
@@ -218,7 +215,8 @@ class VisualizableForwardSearch(ForwardSearch):
 
         self.logger.logState("No Solution Generated", {"Frontier": self.frontier, "Visitation Table": visitedTable, "Solution": None})
         self.logger.logWrite(options={"createParent":self.parentOption})
-        self.logger.reset()
+        self.logger.closeLog()
+        self.logger._reset()
         return None
     # TODO: We can get a good speedup if logger acts concurrently, this way search algorithm does not have to block itself for I/O operations
     def _generateSolutionPath(self, currentState: Any, visitedTable: Dict):
