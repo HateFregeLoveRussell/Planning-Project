@@ -112,9 +112,9 @@ class HillClimber:
         coordinates_prime = np.array([x_prime, y_prime, self.height_function(x_prime, y_prime)])
         return float(np.linalg.norm(coordinates_prime-coordinates))
 
-    def solve(self, solver: VisualizableForwardSearch) -> None:
+    def solve(self, solver: VisualizableForwardSearch) -> str:
             solution = solver.generateSolution()
             if (solver.validateSolution(solution)):
-                print("Solution valid: " + solver.stringifySolution(solution))
+                return "Solution valid: " + solver.stringifySolution(solution)
             else:
-                print("No Solution Exists")
+                return "No Solution Exists"

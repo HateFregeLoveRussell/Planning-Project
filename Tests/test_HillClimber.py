@@ -14,8 +14,19 @@ def test_height_function(x: int, y: int) -> float:
 
 class test_HillClimber(unittest.TestCase):
         def setUp(self):
-            pass
-        def test(self):
+            self.logFile = Path("Tests/TestPath/HillClimberAStarTestLog.json")
+            self.createParent = True
+
+        def tearDown(self):
+            parent = self.logFile.parent
+            if not parent.exists():
+                return
+            files = parent.glob("*.json")
+            for file in files:
+                file.unlink()
+            parent.rmdir()
+
+        def test_AStar_success(self):
             initial_state = repr((1, 19))
             goalStates = {repr((19, 1))}
             size = (20, 20)
@@ -28,13 +39,15 @@ class test_HillClimber(unittest.TestCase):
                 coordinates_prime = np.array([x_prime, y_prime, height_function(x_prime, y_prime)])
                 return float(np.linalg.norm(coordinates_prime - coordinates))
 
-            logFile = Path("DiscretePlanning/Environment/HillClimberEnvironment/Logs/HillClimberSecondTest.json")
-            create_parent = True
-
             climber = HillClimber(height_function, size, initial_state, goalStates)
-            solver = ForwardAStar(problem=climber.problem, logFile=logFile, heuristic=HueristicFunction,
-                                  createParent=create_parent)
-            climber.solve(solver)
+            solver = ForwardAStar(problem=climber.problem, logFile=self.logFile, heuristic=HueristicFunction,
+                                  createParent=self.createParent)
+
+
+            result = climber.solve(solver=solver)
+            ExpectedSolution = "(1, 19) -> (1, 18) -> (1, 17) -> (1, 16) -> (1, 15) -> (1, 14) -> (1, 13) -> (1, 12) -> (1, 11) -> (1, 10) -> (1, 9) -> (1, 8) -> (1, 7) -> (1, 6) -> (2, 5) -> (3, 4) -> (4, 3) -> (5, 2) -> (6, 1) -> (7, 1) -> (8, 1) -> (9, 1) -> (10, 1) -> (11, 1) -> (12, 1) -> (13, 1) -> (14, 1) -> (15, 1) -> (16, 1) -> (17, 1) -> (18, 1) -> (19, 1)"
+            self.assertIn("Solution valid", result)
+            self.assertIn(ExpectedSolution, result)
 
 if __name__ == '__main__':
     unittest.main()
