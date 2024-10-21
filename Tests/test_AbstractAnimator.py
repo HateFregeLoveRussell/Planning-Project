@@ -218,7 +218,89 @@ class test_AbstractAnimator(unittest.TestCase):
         self.assertIsNone(file3_event4)
         return
 
+    # ~~~~ memory_subscriptions ~~~~
+    #   ~~~~ memory_subscribe() ~~~~
+    def test_AbstractAnimator_memory_subscribe_success_single_event(self):
+        # subscribe to event 1
+        # successively call _get_next()
+        # check to see if expected events in self.memory in-between calls
+        # build own mirror memory while doing this compare at each call
+        pass
 
+    def test_AbstractAnimator_memory_subscribe_success_multiple_events(self):
+        # subscribe to 2 events out of 3
+        # successively call _get_next()
+        # check to see if expected events in self.memory in-between calls
+        # build own mirror memory while doing this compare at each call
+        # both content and order should match
+        pass
+
+    def test_AbstractAnimator_memory_subscribe_fail_invalid_event_string_type(self):
+        # pass non-string to subscribe_event
+        # listen for ValueError
+        pass
+
+    def test_AbstractAnimator_memory_subscribe_fail_empty_string(self):
+        # pass empty string to subscribe call
+        # listen for ValueError
+        pass
+
+    def test_AbstractAnimator_memory_subscribe_fail_nonexistent_event(self):
+        # subscribe to non-existent event
+        # call _get_next() repeatedly until None reached
+        # check to see if memory is empty
+        pass
+
+    def test_AbstractAnimator_memory_subscribe_nonexistent_and_existent_events(self):
+        # create two instances of ConcreteAnimator
+        # one subscribes to an existent event
+        # other subscribes to the existent and a non-existent event
+        # call _get_next() on both until None.
+        # compare self.memory on both check for equality
+        pass
+
+    def test_AbstractAnimator_memory_subscribe_successive_subscriptions(self):
+        # subscribe to 2 events out of 3
+        # successively call _get_next()
+        # in the middle subscribe to third event
+        # check to see if expected events in self.memory in-between calls
+        # build own mirror memory while doing this compare at each call
+        # both content and order should match
+        pass
+
+    #   ~~~~ memory_unsubscribe() ~~~~
+    def test_AbstractAnimator_memory_unsubscribe_success_single_event(self):
+        # create two instances of ConcreteAnimator
+        # both subscribed to the same event
+        # for one animator, unsubscribe from event half-way through run
+        # assert inequality between the two memories
+        # assert difference between the two memory arrays is composed only of unsubscribed event
+        pass
+
+    def test_AbstractAnimator_memory_unsubscribe_success_multiple_events(self):
+        # create two instances of ConcreteAnimator
+        # both subscribed to the same 2 events
+        # for one animator, unsubscribe from both events half-way through run
+        # assert inequality between memory arrays
+        # assert difference between two memory arrays is composed of both
+        pass
+
+    def test_AbstractAnimator_memory_unsubscribe_fail_invalid_event_string_type(self):
+        # Unsubscribe from event with a non-string argument
+        # listen for ValueError
+        pass
+
+    def test_AbstractAnimator_memory_unsubscribe_fail_empty_string(self):
+        # Unsubscribe from event with an empty string argument
+        # listen for ValueError
+        pass
+
+    def test_AbstractAnimator_memory_unsubscribe_fail_nonexistent_event(self):
+        # create two ConcreteAnimator
+        # subscribe both to some event
+        # unsubscribe one from some non-existent event halfway through
+        # assert equality between the two memory arrays
+        pass
 
 if __name__ == '__main__':
     unittest.main()
