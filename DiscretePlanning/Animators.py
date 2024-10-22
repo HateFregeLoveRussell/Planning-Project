@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Set, Callable, Dict, Optional
 from json import loads, JSONDecodeError
+from collections import defaultdict
 import os
 
 
@@ -31,8 +32,8 @@ class AbstractAnimator(ABC):
         self._buff = []
 
         # Subscription variables
-        self.event_callbacks = {}
-        self.memory_callbacks = set()
+        self._event_to_callbackID = defaultdict(set)
+        self._callbackID_to_Callback = {"0" : self.memory_callback}
 
         pass
 
@@ -90,7 +91,8 @@ class AbstractAnimator(ABC):
         event_type (Set[str]): The event(s) to subscribe to.
         """
         self._validate_event_types_param(event_types)
-        self.memory_callbacks.update(event_types)
+        for event_type in event_types:
+            self._event_to_callbackID[event_type].update("0")
 
     def memory_unsubscribe(self, event_types: Set[str]) -> None:
         """
@@ -102,9 +104,14 @@ class AbstractAnimator(ABC):
         :return:
         """
         self._validate_event_types_param(event_types)
-        for common_event_type in event_types.intersection(self.memory_callbacks):
-            self.memory_callbacks.remove(common_event_type)
+        for event_type in event_types.intersection(self._event_to_callbackID.keys()):
+            if "0" in self._event_to_callbackID[event_type]:
+                self._event_to_callbackID[event_type].remove("0")
+                if not self._event_to_callbackID[event_type]:
+                    del self._event_to_callbackID[event_type]
 
+    def memory_callback(self, event: Dict):
+        self.memory.append(event)
 
     def subscribe_to_event(self, event_type: Set[str], callback: Callable, callback_id : str) -> None:
         """
@@ -114,7 +121,10 @@ class AbstractAnimator(ABC):
         event_type (Set[str]): The event(s) to subscribe to.
         callback (callable): The callback function to call when the event is encountered.
         callback_id (str): A Unique ID managed by the user, multiple callbacks assigned to the same ID will overwrite each other.
+        The Callback_ID "0" is assigned to the memory subscription callback, it is reserved and cannot be used for other user callbacks.
         """
+        # self._validate_event_types_param(event_type)
+
         pass
 
     def unsubscribe_from_event(self, event_type: Set[str], callback_id: str,) -> None:
@@ -127,6 +137,7 @@ class AbstractAnimator(ABC):
         event_type (Set[str]): The event(s) to unsubscribe from.
         callback_id (str): The Unique ID managed by the user which correspond to the targeted callback.
         """
+
     def _handle_event(self, event: Dict):
         """
         Handles an event by calling the subscribed callbacks with appropriate event information.
