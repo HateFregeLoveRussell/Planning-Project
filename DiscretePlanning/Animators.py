@@ -33,7 +33,7 @@ class AbstractAnimator(ABC):
 
         # Subscription variables
         self._event_to_callbackID = defaultdict(set)
-        self._callbackID_to_Callback = {"0" : self.memory_callback}
+        self._callbackID_to_Callback = {"-" : self.memory_callback}
 
         pass
 
@@ -92,7 +92,7 @@ class AbstractAnimator(ABC):
         """
         self._validate_event_types_param(event_types)
         for event_type in event_types:
-            self._event_to_callbackID[event_type].update("0")
+            self._event_to_callbackID[event_type].update("-")
 
     def memory_unsubscribe(self, event_types: Set[str]) -> None:
         """
@@ -105,8 +105,8 @@ class AbstractAnimator(ABC):
         """
         self._validate_event_types_param(event_types)
         for event_type in event_types.intersection(self._event_to_callbackID.keys()):
-            if "0" in self._event_to_callbackID[event_type]:
-                self._event_to_callbackID[event_type].remove("0")
+            if "-" in self._event_to_callbackID[event_type]:
+                self._event_to_callbackID[event_type].remove("-")
                 if not self._event_to_callbackID[event_type]:
                     del self._event_to_callbackID[event_type]
 
@@ -121,7 +121,7 @@ class AbstractAnimator(ABC):
         event_type (Set[str]): The event(s) to subscribe to.
         callback (callable): The callback function to call when the event is encountered.
         callback_id (str): A Unique ID managed by the user, multiple callbacks assigned to the same ID will overwrite each other.
-        The Callback_ID "0" is assigned to the memory subscription callback, it is reserved and cannot be used for other user callbacks.
+        The Callback_ID "-" is assigned to the memory subscription callback, it is reserved and cannot be used for other user callbacks.
         """
         # self._validate_event_types_param(event_type)
 

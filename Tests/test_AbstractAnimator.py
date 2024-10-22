@@ -188,7 +188,7 @@ class test_AbstractAnimator(unittest.TestCase):
         self.assertEqual(animator.current_file_index , 0)
         self.assertIsNone(animator.current_file)
         self.assertEqual(animator.memory, [])
-        self.assertEqual(animator._callbackID_to_Callback,{"0" : animator.memory_callback})
+        self.assertEqual(animator._callbackID_to_Callback,{"-" : animator.memory_callback})
         self.assertEqual(animator._event_to_callbackID, {})
 
     def test_AbstractAnimator_init_fail_invalid_directory(self):
@@ -365,17 +365,17 @@ class test_AbstractAnimator(unittest.TestCase):
         with self.subTest(event="Single Event"):
             animator = ConcreteAnimator(self.json_dir)
             animator.memory_subscribe({"Event 1"})
-            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"0"}})
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"-"}})
 
         with self.subTest(event="Multiple Events"):
             animator1 = ConcreteAnimator(self.json_dir)
             animator1.memory_subscribe({"Event 1", "Event 3"})
-            self.assertEqual(animator1._event_to_callbackID, {"Event 1": {"0"}, "Event 3": {"0"}})
+            self.assertEqual(animator1._event_to_callbackID, {"Event 1": {"-"}, "Event 3": {"-"}})
 
             animator2 = ConcreteAnimator(self.json_dir)
             animator2.memory_subscribe({"Event 1"})
             animator2.memory_subscribe({"Event 3"})
-            self.assertEqual(animator2._event_to_callbackID, {"Event 1": {"0"}, "Event 3": {"0"}})
+            self.assertEqual(animator2._event_to_callbackID, {"Event 1": {"-"}, "Event 3": {"-"}})
 
             self.assertEqual(animator1._event_to_callbackID, animator2._event_to_callbackID)
 
@@ -383,7 +383,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator = ConcreteAnimator(self.json_dir)
             animator.memory_subscribe({"Event 1", "Event 3"})
             animator.memory_subscribe({"Event 1"})
-            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"0"}, "Event 3": {"0"}})
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"-"}, "Event 3": {"-"}})
 
     # ~~~~ memory_unsubscribe() ~~~~
 
@@ -400,7 +400,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator1 = ConcreteAnimator(self.json_dir)
             animator1.memory_subscribe({"Event 1", "Event 3"})
             animator1.memory_unsubscribe({"Event 1"})
-            self.assertEqual(animator1._event_to_callbackID, {"Event 3": {"0"}})
+            self.assertEqual(animator1._event_to_callbackID, {"Event 3": {"-"}})
             animator1.memory_unsubscribe({"Event 3"})
             self.assertEqual(animator1._event_to_callbackID, {})
 
@@ -415,9 +415,9 @@ class test_AbstractAnimator(unittest.TestCase):
             animator = ConcreteAnimator(self.json_dir)
             animator.memory_subscribe({"Event 1", "Event 3"})
             animator.memory_unsubscribe({"Event Alpha"})
-            self.assertEqual(animator._event_to_callbackID, {"Event 1" : {"0"}, "Event 3": {"0"}})
+            self.assertEqual(animator._event_to_callbackID, {"Event 1" : {"-"}, "Event 3": {"-"}})
             animator.memory_unsubscribe({"Event 1"})
-            self.assertEqual(animator._event_to_callbackID, {"Event 3": {"0"}})
+            self.assertEqual(animator._event_to_callbackID, {"Event 3": {"-"}})
 
     # ~~~~ _validate_event_types_param() ~~~~
     @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
