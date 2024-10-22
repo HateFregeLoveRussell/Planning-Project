@@ -1,7 +1,8 @@
+import json
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Set, Callable, Dict
-import json
+from typing import Set, Callable, Dict, Optional
+from json import loads, JSONDecodeError
 import os
 
 
@@ -27,6 +28,7 @@ class AbstractAnimator(ABC):
         self.current_file_index = 0
         self.current_file = None
         self.memory = []
+        self._buff = []
 
         # Subscription variables
         self.event_callbacks = {}
@@ -34,14 +36,49 @@ class AbstractAnimator(ABC):
 
         pass
 
-    def _get_next(self) -> Dict:
+    def _get_next(self) -> Optional[Dict]:
         """
         Fetches the next event in order from the series of JSON files.
 
         Returns:
         dict: The next event dictionary, or None if the next event does not exist.
         """
-        pass
+        if self.current_file_index >= len(self.json_files):
+            return None
+
+        # Index incrementation is now meaningful
+        if self.current_file is None:
+            try:
+                self._buff = json.loads(self.json_files[self.current_file_index].read_text())
+                self.current_file = self.json_files[self.current_file_index]
+            except JSONDecodeError as err:
+                raise JSONDecodeError(
+                    f"Error decoding JSON in _get_next from {self.json_files[self.current_file_index]}: {err.msg}",
+                    doc=err.doc, pos=err.pos)
+            except IOError as io_err:
+                raise IOError(f"Error reading file {self.json_files[self.current_file_index]} in _get_next: {io_err}")
+            except Exception as err:
+                raise RuntimeError(
+                    f"Unexpected error in _get_next processing file {self.json_files[self.current_file_index]}: {err}")
+
+        while not self._buff:
+            self.current_file_index += 1
+            if self.current_file_index >= len(self.json_files):
+                return None
+            self.current_file = self.json_files[self.current_file_index]
+            try:
+                self._buff = json.loads(self.current_file.read_text())
+            except JSONDecodeError as err:
+                raise JSONDecodeError(
+                    f"Error decoding JSON from {self.current_file}: {err.msg}",
+                    doc=err.doc, pos=err.pos)
+            except IOError as io_err:
+                raise IOError(f"Error reading file {self.current_file} in _get_next: {io_err}")
+            except Exception as err:
+                raise RuntimeError(f"Unexpected error in _get_next processing file {self.current_file}: {err}")
+
+        # _buff is now populated
+        return self._buff.pop(0) if self._buff else None
 
 
     def memory_subscribe(self, event_type: Set[str]) -> None:
