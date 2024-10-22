@@ -189,7 +189,7 @@ class test_AbstractAnimator(unittest.TestCase):
         self.assertIsNone(animator.current_file)
         self.assertEqual(animator.memory, [])
         self.assertEqual(animator.event_callbacks,{})
-        self.assertEqual(animator.memory_callbacks, {})
+        self.assertEqual(animator.memory_callbacks, set())
 
     def test_AbstractAnimator_init_fail_invalid_directory(self):
         with self.assertRaises(ValueError) as context:
@@ -324,7 +324,130 @@ class test_AbstractAnimator(unittest.TestCase):
             animator._get_next()
             self.assertTrue("Unexpected error in _get_next processing file" in str(context.exception))
 
-    # # ~~~~ memory_subscriptions ~~~~
+    # ~~~~ _validate_event ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    @patch.object(Path, 'read_text', return_value=mock_read_combined)
+    def test_AbstractAnimator_validate_event_success(self, mock_read, mock_exists, mock_glob):
+        #initialize Animator
+        animator = ConcreteAnimator(self.json_dir)
+        entry = animator._get_next()
+        #Sanity Check
+        self.assertIsNotNone(entry)
+        while entry is not None:
+            animator._validate_event(entry)
+            entry = animator._get_next()
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_validate_event_fail_invalid_event_type(self, mock_exists, mock_glob):
+        test_cases = [
+            ({}, r'Invalid Event encountered, event: {} does not have "Event" key'),
+            ({"Event": 123}, r'Invalid Event encountered, event: .+ value of type str for "Event" key'),
+            ({"Event": "my_event"}, r'Invalid Event encountered, event: .+ does not have "Entry" key'),
+            ({"Event": "my_event", "Entry": "not_a_dict"},
+             r'Invalid Event encountered, event: .+ value of type dict for "Entry" key'),
+            ({"Event": "my_event", "Entry": {}},
+             r'Invalid Event encountered, event: .+ does not have "Log Entry Number" key'),
+            ({"Event": "my_event", "Entry": {}, "Log Entry Number": "not_an_int"},
+             r'Invalid Event encountered, event: .+ value of type int for "Log Entry Number" key')
+        ]
+        animator = ConcreteAnimator(self.json_dir)
+        for event, expected_response in test_cases:
+            with self.subTest(event=event):
+                with self.assertRaisesRegex(ValueError, expected_response):
+                    animator._validate_event(event)
+
+
+    # ~~~~ memory_subscribe() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_memory_subscribe_success(self, mock_exists, mock_glob):
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.memory_subscribe({"Event 1"})
+            self.assertEqual(animator.memory_callbacks, {"Event 1"})
+
+        with self.subTest(event="Multiple Events"):
+            animator1 = ConcreteAnimator(self.json_dir)
+            animator1.memory_subscribe({"Event 1", "Event 3"})
+            self.assertEqual(animator1.memory_callbacks, {"Event 1", "Event 3"})
+
+            animator2 = ConcreteAnimator(self.json_dir)
+            animator2.memory_subscribe({"Event 1"})
+            animator2.memory_subscribe({"Event 3"})
+            self.assertEqual(animator2.memory_callbacks, {"Event 1", "Event 3"})
+
+            self.assertEqual(animator1.memory_callbacks, animator2.memory_callbacks)
+
+        with self.subTest(event="Same Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.memory_subscribe({"Event 1", "Event 3"})
+            animator.memory_subscribe({"Event 1"})
+            self.assertEqual(animator.memory_callbacks, {"Event 1", "Event 3"})
+
+    # ~~~~ memory_unsubscribe() ~~~~
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_memory_unsubscribe_success(self, mock_exists, mock_glob):
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.memory_subscribe({"Event 1"})
+            animator.memory_unsubscribe({"Event 1"})
+            self.assertEqual(animator.memory_callbacks, set())
+
+        with self.subTest(event="Multiple Events"):
+            animator1 = ConcreteAnimator(self.json_dir)
+            animator1.memory_subscribe({"Event 1", "Event 3"})
+            animator1.memory_unsubscribe({"Event 1"})
+            self.assertEqual(animator1.memory_callbacks, {"Event 3"})
+            animator1.memory_unsubscribe({"Event 3"})
+            self.assertEqual(animator1.memory_callbacks, set())
+
+            animator2 = ConcreteAnimator(self.json_dir)
+            animator2.memory_subscribe({"Event 1", "Event 3"})
+            animator2.memory_unsubscribe({"Event 1", "Event 3"})
+            self.assertEqual(animator2.memory_callbacks, set())
+
+            self.assertEqual(animator1.memory_callbacks, animator2.memory_callbacks)
+
+        with self.subTest(event="Non-Existent Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.memory_subscribe({"Event 1", "Event 3"})
+            animator.memory_unsubscribe({"Event Alpha"})
+            self.assertEqual(animator.memory_callbacks, {"Event 1", "Event 3"})
+            animator.memory_unsubscribe({"Event 1"})
+            self.assertEqual(animator.memory_callbacks, {"Event 3"})
+
+    # ~~~~ _validate_event_types_param() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_memory_subscribe_fail_invalid_type(self, mock_exists, mock_glob):
+        class MyClass:
+            def __init__(self):
+                pass
+        # pass non-string to subscribe_event
+        test_cases = [
+            ({MyClass()}, r'Event Type of Type ".+" Not Recognized', TypeError),
+            ({"Event 1", 12, "Event 3"}, r'Event Type of Type "int" Not Recognized', TypeError),
+            ({"Event 1", "Event 3", MyClass()}, r'Event Type of Type ".+" Not Recognized', TypeError),
+            ({"Event 1", "", "Event 3"}, r'Empty String Event Types Encountered, this Event Type is Forbidden', ValueError),
+            ({"", "Event 2", "Event 3"}, r'Empty String Event Types Encountered, this Event Type is Forbidden', ValueError),
+            (MyClass(), r'Event Types Parameter Should be of Type Set\[Str\] is instead ".+"', TypeError)
+        ]
+
+        for input, expected_response, error_type in test_cases:
+            with self.subTest():
+                animator = ConcreteAnimator(self.json_dir)
+                with self.assertRaisesRegex(error_type, expected_response):
+                    animator._validate_event_types_param(input)
+
+        return
+
+
+
+    # # ~~~~ memory_subscriptions ~~~
     # #   ~~~~ memory_subscribe() ~~~~
     # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
     # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
@@ -390,38 +513,6 @@ class test_AbstractAnimator(unittest.TestCase):
     #     self.assertEqual(animator1.memory, animator2.memory)
     #
     #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_fail_invalid_event_string_type(self):
-    #     class Myclass:
-    #         def __init__(self):
-    #             pass
-    #     # pass non-string to subscribe_event
-    #     obj = Myclass()
-    #     animator = ConcreteAnimator(self.json_dir)
-    #     # listen for ValueError
-    #     with self.assertRaises(TypeError) as context:
-    #         animator.memory_subscribe({obj, 12, "Event 1"})
-    #         self.assertTrue("Event Type Not Recognized" in str(context.exception))
-    #
-    #     with self.assertRaises(TypeError) as context:
-    #         animator.memory_subscribe(obj)
-    #         self.assertTrue("Event Type Not Recognized" in str(context.exception))
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_fail_empty_string(self):
-    #     animator = ConcreteAnimator(self.json_dir)
-    #     # pass empty string to subscribe call
-    #     # listen for ValueError
-    #     with self.assertRaises(ValueError) as context:
-    #         animator.memory_subscribe({"", "Event 1"})
-    #         self.assertTrue("Event Type Not Recognized" in str(context.exception))
-    #     pass
     #
     # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
     # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
@@ -563,34 +654,6 @@ class test_AbstractAnimator(unittest.TestCase):
     #     # assert difference between two memory arrays is composed of both
     #     difference = [entry for entry in animator2.memory if entry not in animator1.memory]
     #     self.assertTrue(all([entry['Event'] == 'Event 1' or entry['Event'] == 'Event 2' for entry in difference]))
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_unsubscribe_fail_invalid_event_string_type(self):
-    #     class MyClass:
-    #         def __init__(self):
-    #             pass
-    #     obj = MyClass()
-    #     animator = ConcreteAnimator(self.json_dir)
-    #     # Unsubscribe from event with a non-string argument
-    #     with self.assertRaises(TypeError) as context:
-    #         # listen for ValueError
-    #         animator.memory_unsubscribe({"Event 1", obj, 12})
-    #         self.assertTrue("Event Type Not Recognized" in str(context.exception))
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_unsubscribe_fail_empty_string(self):
-    #     animator = ConcreteAnimator(self.json_dir)
-    #     # Unsubscribe from event with an empty string argument
-    #     # listen for ValueError
-    #     with self.assertRaises(ValueError) as context:
-    #         animator.memory_unsubscribe({"", "Event 1"})
-    #         self.assertTrue("Event Type Not Recognized" in str(context.exception))
     #     return
     #
     # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)

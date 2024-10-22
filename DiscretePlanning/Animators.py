@@ -32,7 +32,7 @@ class AbstractAnimator(ABC):
 
         # Subscription variables
         self.event_callbacks = {}
-        self.memory_callbacks = {}
+        self.memory_callbacks = set()
 
         pass
 
@@ -81,15 +81,18 @@ class AbstractAnimator(ABC):
         return self._buff.pop(0) if self._buff else None
 
 
-    def memory_subscribe(self, event_type: Set[str]) -> None:
+    def memory_subscribe(self, event_types: Set[str]) -> None:
         """
+
         Subscribes a callback to a set of events that adds the event information to the classes memory parameter
         This will allow the user to generate event callbacks using subscribe_to_event that can act on event information preceding the event passed to it.
 
         event_type (Set[str]): The event(s) to subscribe to.
-        :return:
         """
-    def memory_unsubscribe(self, event_type: Set[str]) -> None:
+        self._validate_event_types_param(event_types)
+        self.memory_callbacks.update(event_types)
+
+    def memory_unsubscribe(self, event_types: Set[str]) -> None:
         """
         Dual to memory_subscribe.
         Unsubscribes the callback which adds event information to the classes memory parameter for a Set of events.
@@ -98,6 +101,11 @@ class AbstractAnimator(ABC):
         :param event_type:
         :return:
         """
+        self._validate_event_types_param(event_types)
+        for common_event_type in event_types.intersection(self.memory_callbacks):
+            self.memory_callbacks.remove(common_event_type)
+
+
     def subscribe_to_event(self, event_type: Set[str], callback: Callable, callback_id : str) -> None:
         """
         Subscribes a callback to a particular event type.
@@ -119,14 +127,49 @@ class AbstractAnimator(ABC):
         event_type (Set[str]): The event(s) to unsubscribe from.
         callback_id (str): The Unique ID managed by the user which correspond to the targeted callback.
         """
-    def _handle_event(self, event):
+    def _handle_event(self, event: Dict):
         """
         Handles an event by calling the subscribed callbacks with appropriate event information.
 
         Parameters:
         event (dict): The event dictionary containing the event type and entry.
         """
+
+
+
         pass
+
+    def _validate_event(self, event: Dict) -> None:
+        """
+        Determines if Event object provided has valid structure and types, throws Error otherwise
+
+        Parameters:
+        event (dict): The event dictionary to be validated
+        """
+        requirement_dictionary = {
+            "Event" : str,
+            "Entry" : dict,
+            "Log Entry Number": int
+        }
+        for requirement, required_type in requirement_dictionary.items():
+            if requirement not in event:
+                raise ValueError(f'Invalid Event encountered, event: {event} does not have "{requirement}" key')
+            if not isinstance(event[requirement], required_type):
+                raise ValueError(f'Invalid Event encountered, event: {event} does not have value of type '
+                                 f'{required_type.__name__} for "{requirement}" key')
+
+        #guaranteed to have event with all 3 proper keys, and appropriate value types
+        return
+
+    def _validate_event_types_param(self, event_types: Set[str]) -> None:
+        if not isinstance(event_types, set):
+            raise TypeError(f'Event Types Parameter Should be of Type Set[Str] is instead "{type(event_types).__name__}"')
+        for entry in event_types:
+            if not isinstance(entry, str):
+                raise TypeError(f'Event Type of Type "{type(entry).__name__}" Not Recognized')
+            if entry == "":
+                raise ValueError('Empty String Event Types Encountered, this Event Type is Forbidden')
+        return
 
     @abstractmethod
     def setup_animation(self):
