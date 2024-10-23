@@ -261,4 +261,10 @@ class AbstractAnimator(ABC):
         Parameters:
         output_file (str): The path to the file where the animation will be saved.
         """
-        pass
+        self.setup_animation()
+        entry = self._get_next()
+        while entry is not None:
+            self._handle_event(entry)
+            entry = self._get_next()
+        self.save_animation(output_file)
+        return

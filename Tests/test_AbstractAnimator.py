@@ -1,11 +1,9 @@
-# WIP: This test is a work in progress and should not be run
-
 import unittest
 from DiscretePlanning.Animators import AbstractAnimator
 from pathlib import Path
 from unittest.mock import patch, MagicMock, Mock, mock_open, call, create_autospec
 from typing import Dict
-from json import loads, JSONDecodeError
+from json import loads, JSONDecodeError, dumps
 
 class ConcreteAnimator(AbstractAnimator):
     def save_animation(self, output_file: str):
@@ -786,7 +784,63 @@ class test_AbstractAnimator(unittest.TestCase):
             callback2.assert_has_calls([call(data[0]), call(data[0]), call(data[1]), call(data[2]), call(data[0])],
                                        any_order=True)
 
+    # ~~~~ run() ~~~~@patch.object(Path, attribute='read_text', return_value=mock_read_1)
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_run_integration_success_static(self, mock_exists, mock_glob):
+        events = {
+            1: {
+                "Event" : "Event 1",
+                "Entry" : {
+                    "Event Data": "Event Data 1"
+                },
+                "Log Entry Number": 1
+            },
+            2: {
+                "Event" : "Event 2",
+                "Entry" : {
+                    "Event Data": "Event Data 2"
+                },
+                "Log Entry Number": 2
+            },
+            3: {
+                "Event" : "Event 3",
+                "Entry" : {
+                    "Event Data": "Event Data 3"
+                },
+                "Log Entry Number": 3
+            }
+        }
+        def callback_function(input: Dict):
+            return
 
+        callbacks = [create_autospec(callback_function, name=f'callback{num+1}') for num in range(4)]
+        callbackIDs = [f'Callback {num+1}' for num in range(4)]
+        event_sequence_dict = [events[num] for num in [1,2,3,1,3,2,2,2,1,3]]
+
+        expected_call_sequences = [(1,3,1,3,1,3), (1,2,1,2,2,2,1), (3,3,3), (2,2,2,2)]
+
+        read_data = dumps(event_sequence_dict)
+        with patch.object(Path, attribute='read_text', return_value=read_data):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.setup_animation = MagicMock(name="setup_animation")
+            animator.save_animation = MagicMock(name="save_animation")
+
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callbacks[0], callbackIDs[0])
+            animator.subscribe_to_event({"Event 1", "Event 2"}, callbacks[1], callbackIDs[1])
+            animator.subscribe_to_event({"Event 3"}, callbacks[2], callbackIDs[2])
+            animator.subscribe_to_event({"Event 2"}, callbacks[3], callbackIDs[3])
+            animator.run(self.json_dir)
+
+            animator.setup_animation.assert_called_once()
+            animator.save_animation.assert_called_once()
+
+            for i, sequence  in enumerate(expected_call_sequences):
+                call_sequence = [call(events[num]) for num in sequence]
+                callbacks[i].assert_has_calls(call_sequence, any_order=False)
+
+        return
+        # with patch.object(Path, 'read_text',return_value=):
 
 if __name__ == '__main__':
     unittest.main()
