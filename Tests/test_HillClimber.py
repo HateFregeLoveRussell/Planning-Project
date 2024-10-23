@@ -1,4 +1,4 @@
-from DiscretePlanning.HillClimber import HillClimber
+from DiscretePlanning.Environments.HillClimber import HillClimber
 from DiscretePlanning.forwardSearchAlgorithms import ForwardAStar
 import unittest
 from pathlib import Path
