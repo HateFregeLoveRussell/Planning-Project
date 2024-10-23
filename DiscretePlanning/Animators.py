@@ -82,6 +82,80 @@ class AbstractAnimator(ABC):
         # _buff is now populated
         return self._buff.pop(0) if self._buff else None
 
+    def _memory_callback(self, event: Dict):
+        self.memory.append(event)
+
+    def _update_JSON_files(self):
+        self.json_files = sorted(self.dir.glob('*.json'))
+
+    def _handle_event(self, event: Dict):
+        """
+        Handles an event by Validating its contents, then calling the subscribed callbacks with appropriate event information.
+
+        Parameters:
+        event (dict): The event dictionary containing the event, entry, and Log Entry Number fields.
+        """
+        #validate event
+        self._validate_event(event)
+        #event should be safe to use from here
+        event_type = event["Event"]
+        callback_id_set = self._event_to_callbackID[event_type]
+        for callback_id in callback_id_set:
+            callback : Callable = self._callbackID_to_Callback.get(callback_id)
+            if not callback:
+                raise RuntimeError(f"Abstract Animator Internal Memory Coherence lost, should have callback_id {callback_id} "
+                                   f"in _CallbackID_to_Callback: {self._callbackID_to_Callback} but key not present")
+            callback(event)
+        return
+
+    # ~~~ Validation Utilities ~~~
+    def _validate_event(self, event: Dict) -> None:
+        """
+        Determines if Event object provided has valid structure and types, throws Error otherwise
+
+        Parameters:
+        event (dict): The event dictionary to be validated
+        """
+        requirement_dictionary = {
+            "Event" : str,
+            "Entry" : dict,
+            "Log Entry Number": int
+        }
+        for requirement, required_type in requirement_dictionary.items():
+            if requirement not in event:
+                raise ValueError(f'Invalid Event encountered, event: {event} does not have "{requirement}" key')
+            if not isinstance(event[requirement], required_type):
+                raise ValueError(f'Invalid Event encountered, event: {event} does not have value of type '
+                                 f'{required_type.__name__} for "{requirement}" key')
+
+        #guaranteed to have event with all 3 proper keys, and appropriate value types
+        return
+
+    def _validate_event_types_param(self, event_types: Set[str]) -> None:
+        if not isinstance(event_types, set):
+            raise TypeError(f'Event Types Parameter Should be of Type Set[Str] is instead "{type(event_types).__name__}"')
+        for entry in event_types:
+            if not isinstance(entry, str):
+                raise TypeError(f'Event Type of Type "{type(entry).__name__}" Not Recognized')
+            if entry == "":
+                raise ValueError('Empty String Event Types Encountered, this Event Type is Forbidden')
+        return
+
+    def _validate_event_callbacks(self, callback: Callable) -> None:
+        if not callable(callback):
+            raise TypeError(f'Callback Parameter Should be of Type Callable is instead "{type(callback).__name__}"')
+
+        sig = signature(callback)
+        sig_params = sig.parameters
+        if (len(sig_params) != 1):
+            raise ValueError(f'Callback should accept exactly one argument, but it accepts {len(sig_params)}')
+
+        # Check if the function returns None, allowing for missing annotations
+        return_annotation = sig.return_annotation
+        if return_annotation is not Signature.empty and return_annotation not in [None, 'NoneType']:
+            raise ValueError(f'Callback should return None, but it returns "{return_annotation}"')
+
+        return
 
     def memory_subscribe(self, event_types: Set[str]) -> None:
         """
@@ -110,9 +184,6 @@ class AbstractAnimator(ABC):
                 self._event_to_callbackID[event_type].remove("-")
                 if not self._event_to_callbackID[event_type]:
                     del self._event_to_callbackID[event_type]
-
-    def _memory_callback(self, event: Dict):
-        self.memory.append(event)
 
     def subscribe_to_event(self, event_types: Set[str], callback: Callable, callback_id : str) -> None:
         """
@@ -166,66 +237,6 @@ class AbstractAnimator(ABC):
 
         return
 
-    def _handle_event(self, event: Dict):
-        """
-        Handles an event by calling the subscribed callbacks with appropriate event information.
-
-        Parameters:
-        event (dict): The event dictionary containing the event type and entry.
-        """
-
-
-
-        pass
-
-    def _validate_event(self, event: Dict) -> None:
-        """
-        Determines if Event object provided has valid structure and types, throws Error otherwise
-
-        Parameters:
-        event (dict): The event dictionary to be validated
-        """
-        requirement_dictionary = {
-            "Event" : str,
-            "Entry" : dict,
-            "Log Entry Number": int
-        }
-        for requirement, required_type in requirement_dictionary.items():
-            if requirement not in event:
-                raise ValueError(f'Invalid Event encountered, event: {event} does not have "{requirement}" key')
-            if not isinstance(event[requirement], required_type):
-                raise ValueError(f'Invalid Event encountered, event: {event} does not have value of type '
-                                 f'{required_type.__name__} for "{requirement}" key')
-
-        #guaranteed to have event with all 3 proper keys, and appropriate value types
-        return
-
-    def _validate_event_types_param(self, event_types: Set[str]) -> None:
-        if not isinstance(event_types, set):
-            raise TypeError(f'Event Types Parameter Should be of Type Set[Str] is instead "{type(event_types).__name__}"')
-        for entry in event_types:
-            if not isinstance(entry, str):
-                raise TypeError(f'Event Type of Type "{type(entry).__name__}" Not Recognized')
-            if entry == "":
-                raise ValueError('Empty String Event Types Encountered, this Event Type is Forbidden')
-        return
-
-    def _validate_event_callbacks(self, callback: Callable) -> None:
-        if not callable(callback):
-            raise TypeError(f'Callback Parameter Should be of Type Callable is instead "{type(callback).__name__}"')
-
-        sig = signature(callback)
-        sig_params = sig.parameters
-        if (len(sig_params) != 1):
-            raise ValueError(f'Callback should accept exactly one argument, but it accepts {len(sig_params)}')
-
-        # Check if the function returns None, allowing for missing annotations
-        return_annotation = sig.return_annotation
-        if return_annotation is not Signature.empty and return_annotation not in [None, 'NoneType']:
-            raise ValueError(f'Callback should return None, but it returns "{return_annotation}"')
-
-        return
-
     @abstractmethod
     def setup_animation(self):
         """
@@ -242,9 +253,6 @@ class AbstractAnimator(ABC):
         output_file (str): The path to the file where the animation will be saved.
         """
         pass
-
-    def _update_JSON_files(self):
-        self.json_files = sorted(self.dir.glob('*.json'))
 
     def run(self, output_file: str):
         """

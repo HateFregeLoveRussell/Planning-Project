@@ -3,7 +3,8 @@
 import unittest
 from DiscretePlanning.Animators import AbstractAnimator
 from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch, MagicMock, Mock, mock_open, call, create_autospec
+from typing import Dict
 from json import loads, JSONDecodeError
 
 class ConcreteAnimator(AbstractAnimator):
@@ -648,6 +649,144 @@ class test_AbstractAnimator(unittest.TestCase):
         with self.assertRaisesRegex(TypeError, 'Callback ID Should be of Type String is instead ".+"'):
             animator = ConcreteAnimator(self.json_dir)
             animator.unsubscribe_from_event({"Event 1", "Event 3"}, 12)
+
+    # ~~~~ _handle_event() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_handle_event_single_callable(self, mock_exists, mock_glob):
+        def callback_function(input: Dict):
+            return
+        data = [
+            {
+                "Event" : "Event A",
+                "Entry" : {
+                     "Event Data": "Event Data A"
+                },
+                "Log Entry Number": 1
+            },
+            {
+                "Event": "Event B",
+                "Entry": {
+                    "Event Data": "Event Data B"
+                },
+                "Log Entry Number": 2
+            },
+            {
+                "Event": "Event C",
+                "Entry": {
+                    "Event Data": "Event Data C"
+                },
+                "Log Entry Number": 3
+            }
+        ]
+        callback1 = create_autospec(callback_function, name="callback1")
+        with self.subTest(msg="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+
+            animator.subscribe_to_event({"Event A"}, callback1, "Callback 1")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0])], any_order=False)
+
+            animator.unsubscribe_from_event({"Event A"}, "Callback 1")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0])], any_order=False)
+        with self.subTest(msg="Multiple Events"):
+            animator = ConcreteAnimator(self.json_dir)
+
+            animator.subscribe_to_event({"Event A", "Event B"}, callback1, "Callback 1")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0])], any_order=False)
+            animator._handle_event(data[1])
+            animator._handle_event(data[1])
+            callback1.assert_has_calls([call(data[0]), call(data[1]), call(data[1])], any_order=False)
+
+            animator.unsubscribe_from_event({"Event A", "Event B"}, "Callback 1")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0]), call(data[1]), call(data[1])], any_order=False)
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_handle_event_multiple_callables(self, mock_exists, mock_glob):
+        def callback_function(input: Dict):
+            return
+        data = [
+            {
+                "Event" : "Event A",
+                "Entry" : {
+                     "Event Data": "Event Data A"
+                },
+                "Log Entry Number": 1
+            },
+            {
+                "Event": "Event B",
+                "Entry": {
+                    "Event Data": "Event Data B"
+                },
+                "Log Entry Number": 2
+            },
+            {
+                "Event": "Event C",
+                "Entry": {
+                    "Event Data": "Event Data C"
+                },
+                "Log Entry Number": 3
+            }
+        ]
+        callback1 = create_autospec(callback_function, name="callback1")
+        callback2 = create_autospec(callback_function, name="callback2")
+        callback3 = create_autospec(callback_function,name="callback3")
+
+        with self.subTest(msg="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+
+            animator.subscribe_to_event({"Event A"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event A"}, callback2, "Callback 2")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0])], any_order=False)
+            callback2.assert_has_calls([call(data[0])], any_order=False)
+
+            animator.unsubscribe_from_event({"Event A"}, "Callback 1")
+            animator.unsubscribe_from_event({"Event A"}, "Callback 2")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[0])], any_order=False)
+            callback2.assert_has_calls([call(data[0])], any_order=False)
+
+        with self.subTest(msg="Multiple Events"):
+            animator = ConcreteAnimator(self.json_dir)
+
+            animator.subscribe_to_event({"Event C"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event A", "Event B", "Event C"}, callback2, "Callback 2")
+            animator.subscribe_to_event({"Event A"}, callback3, "Callback 3")
+            animator._handle_event(data[0])
+            callback2.assert_has_calls([call(data[0])], any_order=False)
+            callback3.assert_has_calls([call(data[0])], any_order=False)
+
+            animator.unsubscribe_from_event({"Event A"}, "Callback 3")
+            animator._handle_event(data[0])
+            callback2.assert_has_calls([call(data[0]), call(data[0])], any_order=False)
+            animator._handle_event(data[1])
+            callback2.assert_has_calls([call(data[0]), call(data[0]), call(data[1])], any_order=False)
+            animator._handle_event(data[2])
+            callback2.assert_has_calls([call(data[0]), call(data[0]), call(data[1]), call(data[2])], any_order=True)
+            callback1.assert_has_calls([call(data[2])], any_order=False)
+
+            animator.unsubscribe_from_event({"Event C"}, "Callback 1")
+            animator._handle_event(data[0])
+            callback1.assert_has_calls([call(data[2])], any_order=True)
+            callback3.assert_has_calls([], any_order=False)
+            callback2.assert_has_calls([call(data[0]), call(data[0]), call(data[1]), call(data[2]), call(data[0])],
+                                       any_order=True)
+
+            animator.unsubscribe_from_event({"Event A", "Event B", "Event C"}, "Callback 2")
+            animator._handle_event(data[0])
+            animator._handle_event(data[1])
+            animator._handle_event(data[2])
+            callback1.assert_has_calls([call(data[2])], any_order=True)
+            callback3.assert_has_calls([], any_order=False)
+            callback2.assert_has_calls([call(data[0]), call(data[0]), call(data[1]), call(data[2]), call(data[0])],
+                                       any_order=True)
+
+
 
 if __name__ == '__main__':
     unittest.main()
