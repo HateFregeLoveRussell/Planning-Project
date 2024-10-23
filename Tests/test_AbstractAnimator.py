@@ -1,5 +1,5 @@
 import unittest
-from DiscretePlanning.Animators import AbstractAnimator
+from DiscretePlanning.Animators.AbstractAnimator import AbstractAnimator
 from pathlib import Path
 from unittest.mock import patch, MagicMock, Mock, mock_open, call, create_autospec
 from typing import Dict
