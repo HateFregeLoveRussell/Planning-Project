@@ -188,7 +188,7 @@ class test_AbstractAnimator(unittest.TestCase):
         self.assertEqual(animator.current_file_index , 0)
         self.assertIsNone(animator.current_file)
         self.assertEqual(animator.memory, [])
-        self.assertEqual(animator._callbackID_to_Callback,{"-" : animator.memory_callback})
+        self.assertEqual(animator._callbackID_to_Callback,{"-" : animator._memory_callback})
         self.assertEqual(animator._event_to_callbackID, {})
 
     def test_AbstractAnimator_init_fail_invalid_directory(self):
@@ -386,7 +386,6 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._event_to_callbackID, {"Event 1": {"-"}, "Event 3": {"-"}})
 
     # ~~~~ memory_unsubscribe() ~~~~
-
     @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_memory_unsubscribe_success(self, mock_exists, mock_glob):
@@ -444,236 +443,211 @@ class test_AbstractAnimator(unittest.TestCase):
 
         return
 
+    #~~~~ _validate_event_callbacks() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_validate_event_callbacks(self, mock_exists, mock_glob):
+        callable_test_cases = [
+            ("Callable with no arguments", lambda: None, ValueError, 'Callback should accept exactly one argument, but it accepts .+'),
+            ("Callable with more than one argument", lambda x, y: None, ValueError, 'Callback should accept exactly one argument, but it accepts .+'),
+            ("Non-callable object", "Not a function", TypeError, 'Callback Parameter Should be of Type Callable is instead ".+"'),
+            ("Not a Callable", 12, TypeError, 'Callback Parameter Should be of Type Callable is instead ".+"'),
+        ]
+        correct_test_case = ("This is correct", lambda x: None, None, None)
+        for name, callable_test, error_type, expected_response in callable_test_cases:
+            with self.subTest(msg=name):
+                animator = ConcreteAnimator(self.json_dir)
+                with self.assertRaisesRegex(error_type, expected_response):
+                    animator._validate_event_callbacks(callable_test)
 
+        with self.subTest(name=correct_test_case[0]):
+            animator = ConcreteAnimator(self.json_dir)
+            animator._validate_event_callbacks(correct_test_case[1])
 
-    # # ~~~~ memory_subscriptions ~~~
-    # #   ~~~~ memory_subscribe() ~~~~
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_success_single_event(self, mock_exists, mock_glob, mock_open):
-    #     animator = ConcreteAnimator(self.json_dir)
-    #
-    #     # subscribe to event 1
-    #     animator.memory_subscribe({"Event 1"})
-    #     # successively call _get_next()
-    #     # build own mirror memory
-    #     entry = animator._get_next()
-    #     self.assertIsNotNone(entry)
-    #     memory = []
-    #     while entry is not None:
-    #         if entry['Event'] == 'Event 1':
-    #             memory.append(entry)
-    #         entry = animator._get_next()
-    #
-    #     #assert equality between mirror and animator memory
-    #     self.assertEqual(animator.memory, memory)
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_success_multiple_events(self):
-    #     #create two animators
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #     # subscribe to 2 events out of 3 on both
-    #     animator1.memory_subscribe({"Event 1"})
-    #     animator1.memory_subscribe({"Event 3"})
-    #
-    #     animator2.memory_subscribe({"Event 1", "Event 3"})
-    #
-    #     # successively call _get_next()
-    #     # build own mirror memory
-    #     memory1, memory2 = [], []
-    #     entry1 = animator1._get_next()
-    #     entry2 = animator2._get_next()
-    #     while entry1 is not None and entry2 is not None:
-    #         if entry1['Event'] == 'Event 1' or entry1['Event'] == 'Event 3':
-    #             memory1.append(entry1)
-    #         if entry2['Event'] == 'Event 1' or entry2['Event'] == 'Event 3':
-    #             memory2.append(entry2)
-    #
-    #         entry1 = animator1._get_next()
-    #         entry2 = animator2._get_next()
-    #
-    #
-    #     self.assertIsNone(animator1._get_next())
-    #     self.assertIsNone(animator2._get_next())
-    #
-    #     #assert equality between mirror memories
-    #     self.assertEqual(memory1, memory2)
-    #
-    #     #assert equality between mirror and animator memories
-    #     self.assertEqual(animator1.memory, memory1)
-    #     self.assertEqual(animator2.memory, memory2)
-    #
-    #     #assert (just for safety) equality between animator memories
-    #     self.assertEqual(animator1.memory, animator2.memory)
-    #
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_fail_nonexistent_event(self):
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #
-    #     # subscribe to non-existent event
-    #     animator1.memory_subscribe({"Event Alpha"})
-    #     animator2.memory_subscribe({"Event Alpha"})
-    #
-    #     # call _get_next() repeatedly until None reached
-    #     entry1 = animator1._get_next()
-    #     entry2 = animator2._get_next()
-    #     mem1,mem2 = [],[]
-    #     self.assertIsNotNone(entry1)
-    #     self.assertIsNotNone(entry2)
-    #
-    #     while entry1 is not None and entry2 is not None:
-    #         if entry1['Event'] == 'Event 100':
-    #             mem1.append(entry1)
-    #         if entry2['Event'] == 'Event 100':
-    #             mem2.append(entry2)
-    #
-    #         entry1 = animator1._get_next()
-    #         entry2 = animator2._get_next()
-    #
-    #     self.assertIsNone(animator1._get_next())
-    #     self.assertIsNone(animator2._get_next())
-    #
-    #     # check to see if memory is empty
-    #     self.assertEqual(mem1,[])
-    #     self.assertEqual(mem2,[])
-    #     self.assertEqual(animator1.memory,[])
-    #     self.assertEqual(animator2.memory,[])
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_nonexistent_and_existent_events(self):
-    #     # create two instances of ConcreteAnimator
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #     # one subscribes to an existent event
-    #     animator1.memory_subscribe({"Event 1"})
-    #     # other subscribes to the existent and a non-existent event
-    #     animator2.memory_subscribe({"Event 1", "Event Alpha"})
-    #     # call _get_next() on both until None.
-    #     mem1,mem2 = [],[]
-    #     entry1, entry2 = animator1._get_next(), animator2._get_next()
-    #     self.assertIsNotNone(entry1)
-    #     self.assertIsNotNone(entry2)
-    #     while entry1 is not None and entry2 is not None:
-    #         entry1 = animator1._get_next()
-    #         entry2 = animator2._get_next()
-    #
-    #     self.assertIsNone(animator1._get_next())
-    #     self.assertIsNone(animator2._get_next())
-    #
-    #     # compare self.memory on both check for equality
-    #     self.assertEqual(animator1.memory, animator2.memory)
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_subscribe_successive_subscriptions(self):
-    #     animator = ConcreteAnimator(self.json_dir)
-    #     # subscribe to 2 events out of 3
-    #     animator.memory_subscribe({"Event 1", "Event 3"})
-    #     # successively call _get_next()
-    #     mem = []
-    #     for i in range(9):
-    #         entry = animator._get_next()
-    #         if entry['Event'] == 'Event 1' or entry['Event'] == 'Event 3':
-    #             mem.append(entry)
-    #         # in the middle subscribe to third event
-    #         if i == 4:
-    #             animator.memory_subscribe({"Event 2"})
-    #         if i >=4:
-    #             if entry['Event'] == 'Event 2':
-    #                 mem.append(entry)
-    #     # check to see if expected events in self.memory in-between calls
-    #     # build own mirror memory while doing this compare at each call
-    #     # both content and order should match
-    #     pass
-    #
-    # #   ~~~~ memory_unsubscribe() ~~~~
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_unsubscribe_success_single_event(self):
-    #     # create two instances of ConcreteAnimator
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #     # both subscribed to the same event
-    #     animator1.memory_subscribe({"Event 1"})
-    #     animator2.memory_subscribe({"Event 1"})
-    #     # for one animator, unsubscribe from event half-way through run
-    #     for i in range(9):
-    #         entry1 = animator1._get_next()
-    #         entry2 = animator2._get_next()
-    #         if i == 4:
-    #             animator1.memory_unsubscribe({"Event 1"})
-    #
-    #     # assert inequality between the two memories
-    #     self.assertNotEqual(animator1.memory, animator2.memory)
-    #     difference = [entry for entry in animator2.memory if entry not in animator1.memory]
-    #     # assert difference between the two memory arrays is composed only of unsubscribed event
-    #     self.assertTrue(all([entry['Event'] == 'Event 1' for entry in difference]))
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_unsubscribe_success_multiple_events(self):
-    #     # create two instances of ConcreteAnimator
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #
-    #     # both subscribed to the same 2 events
-    #     animator1.memory_subscribe({"Event 1", "Event 3"})
-    #     animator2.memory_subscribe({"Event 1", "Event 3"})
-    #
-    #     # for one animator, unsubscribe from both events half-way through run
-    #     for i in range(9):
-    #         animator1._get_next()
-    #         animator2._get_next()
-    #         if i == 4:
-    #             animator1.memory_unsubscribe({"Event 1", "Event 3"})
-    #
-    #
-    #     self.assertIsNone(animator1._get_next())
-    #     self.assertIsNone(animator2._get_next())
-    #     # assert inequality between memory arrays
-    #     self.assertNotEqual(animator1.memory, animator2.memory)
-    #     # assert difference between two memory arrays is composed of both
-    #     difference = [entry for entry in animator2.memory if entry not in animator1.memory]
-    #     self.assertTrue(all([entry['Event'] == 'Event 1' or entry['Event'] == 'Event 2' for entry in difference]))
-    #     return
-    #
-    # @patch("builtins.open", new_callable=mock_open, read_data=mock_read_combined)
-    # @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
-    # @patch.object(Path, attribute='exists', return_value=True)
-    # def test_AbstractAnimator_memory_unsubscribe_fail_nonexistent_event(self):
-    #     # create two ConcreteAnimator
-    #     animator1 = ConcreteAnimator(self.json_dir)
-    #     animator2 = ConcreteAnimator(self.json_dir)
-    #     # subscribe both to some event
-    #     animator1.memory_subscribe({"Event 1"})
-    #     animator2.memory_subscribe({"Event 1"})
-    #     # unsubscribe one from some non-existent event halfway through
-    #     for i in range(9):
-    #         entry1 = animator1._get_next()
-    #         entry2 = animator2._get_next()
-    #         if i == 5:
-    #             animator1.memory_unsubscribe({"Event Alpha"})
-    #     # assert equality between the two memory arrays
-    #     self.assertEqual(animator1.memory, animator2.memory)
-    #     return
+    # ~~~~ subscribe_to_event() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_subscribe_to_event_success_single_callback(self, mock_exists, mock_glob):
+        callback1 = lambda x: print(f"Received: {x}")
+        callback2 = lambda x: x * 2 if isinstance(x, int) else None
+
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, callback1, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"Callback 1"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 1": callback1, "-": animator._memory_callback})
+
+        with self.subTest(event="Multiple Events"):
+            animator1 = ConcreteAnimator(self.json_dir)
+            animator1.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 1")
+            self.assertEqual(animator1._event_to_callbackID, {"Event 1": {"Callback 1"}, "Event 3": {"Callback 1"}})
+            self.assertEqual(animator1._callbackID_to_Callback, {"Callback 1": callback1, "-": animator1._memory_callback})
+
+            animator2 = ConcreteAnimator(self.json_dir)
+            animator2.subscribe_to_event({"Event 1"}, callback1, "Callback 1")
+            animator2.subscribe_to_event({"Event 3"}, callback1, "Callback 1")
+            self.assertEqual(animator2._event_to_callbackID, {"Event 1": {"Callback 1"}, "Event 3": {"Callback 1"}})
+            self.assertEqual(animator2._callbackID_to_Callback, {"Callback 1": callback1, "-": animator2._memory_callback})
+
+            self.assertEqual(animator1._event_to_callbackID, animator2._event_to_callbackID)
+            del animator1._callbackID_to_Callback["-"]
+            del animator2._callbackID_to_Callback["-"]
+            self.assertEqual(animator1._callbackID_to_Callback, animator2._callbackID_to_Callback)
+
+        with self.subTest(event="Overwrite Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"Callback 1"}, "Event 3": {"Callback 1"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 1": callback1, "-": animator._memory_callback})
+
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback2, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"Callback 1"}, "Event 3": {"Callback 1"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 1": callback2, "-": animator._memory_callback})
+        return
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_subscribe_to_event_success_multiple_callbacks(self, mock_exists, mock_glob):
+        callback1 = lambda x: print(f"Received: {x}")
+        callback2 = lambda x: x * 2 if isinstance(x, int) else None
+        callback3 = lambda x: x.append("appended") if isinstance(x, list) else None
+        callback4 = lambda x: x.startswith('A') if isinstance(x, str) else None
+
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1"}, callback2, "Callback 2")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1": {"Callback 1", "Callback 2"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 1": callback1, "Callback 2": callback2, "-": animator._memory_callback})
+
+        with self.subTest(event="Multiple Events"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1", "Event 2"}, callback2, "Callback 2")
+            animator.subscribe_to_event({"Event 2", "Event 3", "Event 1"}, callback3, "Callback 3")
+            animator.subscribe_to_event({"Event 1", "Event 3", "Event 4"}, callback4, "Callback 4")
+            self.assertEqual(animator._event_to_callbackID, {
+                                                            "Event 1": {"Callback 1", "Callback 2", "Callback 3", "Callback 4"},
+                                                            "Event 2": {"Callback 2", "Callback 3"},
+                                                            "Event 3": {"Callback 1", "Callback 3", "Callback 4"},
+                                                            "Event 4": {"Callback 4"}})
+            self.assertEqual(animator._callbackID_to_Callback, {
+                                                                "Callback 1": callback1,
+                                                                "Callback 2": callback2,
+                                                                "Callback 3": callback3,
+                                                                "Callback 4": callback4,
+                                                                "-": animator._memory_callback
+                                                                })
+        with self.subTest(event="Overwrite Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1", "Event 2"}, callback2, "Callback 2")
+            animator.subscribe_to_event({"Event 2", "Event 3", "Event 1"}, callback3, "Callback 3")
+            animator.subscribe_to_event({"Event 1", "Event 3", "Event 4"}, callback4, "Callback 4")
+            self.assertEqual(animator._event_to_callbackID, {
+                "Event 1": {"Callback 1", "Callback 2", "Callback 3", "Callback 4"},
+                "Event 2": {"Callback 2", "Callback 3"},
+                "Event 3": {"Callback 1", "Callback 3", "Callback 4"},
+                "Event 4": {"Callback 4"}})
+            self.assertEqual(animator._callbackID_to_Callback, {
+                "Callback 1": callback1,
+                "Callback 2": callback2,
+                "Callback 3": callback3,
+                "Callback 4": callback4,
+                "-": animator._memory_callback})
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 2")
+            animator.subscribe_to_event({"Event 1", "Event 2"}, callback1, "Callback 3")
+            animator.subscribe_to_event({"Event 4"}, callback1, "Callback 4")
+            self.assertEqual(animator._event_to_callbackID, {
+                "Event 1": {"Callback 1", "Callback 2", "Callback 3", "Callback 4"},
+                "Event 2": {"Callback 2", "Callback 3"},
+                "Event 3": {"Callback 1", "Callback 3", "Callback 4", "Callback 2"},
+                "Event 4": {"Callback 4"}
+            })
+            self.assertEqual(animator._callbackID_to_Callback, {
+                "Callback 1": callback1,
+                "Callback 2": callback1,
+                "Callback 3": callback1,
+                "Callback 4": callback1,
+                "-": animator._memory_callback
+            })
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_subscribe_to_event_fail_invalid_input(self, mock_exists, mock_glob):
+        valid_callback = lambda x: None
+        #mallformed callables should be handled by test_AbstractAnimator_validate_event_callbacks
+        with self.assertRaisesRegex(TypeError, 'Callback ID Should be of Type String is instead ".+"'):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, valid_callback, 12)
+
+    # ~~~~ unsubscribe_from_event() ~~~~
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_unsubscribe_from_event_success_single_callback(self, mock_exists, mock_glob):
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, lambda x: print(f"Received: {x}"), "Callback 1")
+            animator.unsubscribe_from_event({"Event 1"}, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {})
+            self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
+
+        with self.subTest(event="Multiple Events"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, lambda x: print(f"Received: {x}"), "Callback 1")
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {})
+            self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
+
+        with self.subTest(event="Non-Existent Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, lambda x: print(f"Received: {x}"), "Callback 1")
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {})
+            self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
+        return
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_unsubscribe_from_event_success_multiple_callbacks(self, mock_exists, mock_glob):
+        callback1 = lambda x: print(f"Received: {x}")
+        callback2 = lambda x: x.append("appended") if isinstance(x, list) else None
+
+        with self.subTest(event="Single Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1"}, callback2, "Callback 2")
+            animator.unsubscribe_from_event({"Event 1"}, "Callback 1")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1" : {"Callback 2"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 2" : callback2, "-": animator._memory_callback})
+
+        with self.subTest(event="Multiple Events"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1", "Event 2"}, callback2, "Callback 2")
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 2")
+            self.assertEqual(animator._event_to_callbackID, {"Event 1" : {"Callback 1"}, "Event 3": {"Callback 1"}, "Event 2": {"Callback 2"}})
+            self.assertEqual(animator._callbackID_to_Callback, {"Callback 2" : callback2, "Callback 1" : callback1,"-": animator._memory_callback})
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 1")
+            animator.unsubscribe_from_event({"Event 2"}, "Callback 2")
+            self.assertEqual(animator._event_to_callbackID, {})
+            self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
+
+        with self.subTest(event="Non-Existent Event"):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.subscribe_to_event({"Event 1"}, callback1, "Callback 1")
+            animator.subscribe_to_event({"Event 1", "Event 3"}, callback2, "Callback 2")
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 1")
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, "Callback 2")
+            self.assertEqual(animator._event_to_callbackID, {})
+            self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
+
+    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='exists', return_value=True)
+    def test_AbstractAnimator_unsubscribe_from_event_fail_invalid_input(self, mock_exists, mock_glob):
+        with self.assertRaisesRegex(TypeError, 'Callback ID Should be of Type String is instead ".+"'):
+            animator = ConcreteAnimator(self.json_dir)
+            animator.unsubscribe_from_event({"Event 1", "Event 3"}, 12)
 
 if __name__ == '__main__':
     unittest.main()

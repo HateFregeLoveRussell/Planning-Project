@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Set, Callable, Dict, Optional
 from json import loads, JSONDecodeError
 from collections import defaultdict
+from inspect import signature, Signature
 import os
 
 
@@ -33,7 +34,7 @@ class AbstractAnimator(ABC):
 
         # Subscription variables
         self._event_to_callbackID = defaultdict(set)
-        self._callbackID_to_Callback = {"-" : self.memory_callback}
+        self._callbackID_to_Callback = {"-" : self._memory_callback}
 
         pass
 
@@ -110,10 +111,10 @@ class AbstractAnimator(ABC):
                 if not self._event_to_callbackID[event_type]:
                     del self._event_to_callbackID[event_type]
 
-    def memory_callback(self, event: Dict):
+    def _memory_callback(self, event: Dict):
         self.memory.append(event)
 
-    def subscribe_to_event(self, event_type: Set[str], callback: Callable, callback_id : str) -> None:
+    def subscribe_to_event(self, event_types: Set[str], callback: Callable, callback_id : str) -> None:
         """
         Subscribes a callback to a particular event type.
 
@@ -123,20 +124,47 @@ class AbstractAnimator(ABC):
         callback_id (str): A Unique ID managed by the user, multiple callbacks assigned to the same ID will overwrite each other.
         The Callback_ID "-" is assigned to the memory subscription callback, it is reserved and cannot be used for other user callbacks.
         """
-        # self._validate_event_types_param(event_type)
+        self._validate_event_types_param(event_types)
+        self._validate_event_callbacks(callback)
+        if not isinstance(callback_id, str):
+            raise TypeError(f'Callback ID Should be of Type String is instead "{type(callback_id).__name__}"')
 
-        pass
+        #should have valid arguments from here
+        for event_type in event_types:
+            self._event_to_callbackID[event_type].add(callback_id)
+            self._callbackID_to_Callback[callback_id] = callback
 
-    def unsubscribe_from_event(self, event_type: Set[str], callback_id: str,) -> None:
+        return
+
+    def unsubscribe_from_event(self, event_types: Set[str], callback_id: str,) -> None:
         """
         Unsubscribes a callback from a set of events.
-        If all subscribed to events are unsubscribed the callback_id will be de-registered and can be assigned to a new callback
+        If all subscribed to events are unsubscribed, the callback_id will be de-registered and can be assigned to a new callback
         in the future by calling subscribe_to_event.
 
         Parameters:
         event_type (Set[str]): The event(s) to unsubscribe from.
-        callback_id (str): The Unique ID managed by the user which correspond to the targeted callback.
+        callback_id (str): The Unique ID managed by the user which correspond to the targeted callback. Non-existent IDs are ignored
         """
+        self._validate_event_types_param(event_types)
+        if not isinstance(callback_id, str):
+            raise TypeError(f'Callback ID Should be of Type String is instead "{type(callback_id).__name__}"')
+
+        #should have valid arguments from here
+        for event_type in event_types.intersection(self._event_to_callbackID.keys()):
+            #should only include events that have registered callbacks
+            if callback_id in self._event_to_callbackID[event_type]:
+                self._event_to_callbackID[event_type].remove(callback_id)
+                #this branch handles remnant default dict entries
+                if not self._event_to_callbackID[event_type]:
+                    del self._event_to_callbackID[event_type]
+
+        # if callback ID not registered for any event type
+        if all([not callback_id in callbackIDSet for callbackIDSet in self._event_to_callbackID.values()]):
+            self._callbackID_to_Callback.pop(callback_id, None)
+            #else the callback does not exist in class bookkeeping
+
+        return
 
     def _handle_event(self, event: Dict):
         """
@@ -180,6 +208,22 @@ class AbstractAnimator(ABC):
                 raise TypeError(f'Event Type of Type "{type(entry).__name__}" Not Recognized')
             if entry == "":
                 raise ValueError('Empty String Event Types Encountered, this Event Type is Forbidden')
+        return
+
+    def _validate_event_callbacks(self, callback: Callable) -> None:
+        if not callable(callback):
+            raise TypeError(f'Callback Parameter Should be of Type Callable is instead "{type(callback).__name__}"')
+
+        sig = signature(callback)
+        sig_params = sig.parameters
+        if (len(sig_params) != 1):
+            raise ValueError(f'Callback should accept exactly one argument, but it accepts {len(sig_params)}')
+
+        # Check if the function returns None, allowing for missing annotations
+        return_annotation = sig.return_annotation
+        if return_annotation is not Signature.empty and return_annotation not in [None, 'NoneType']:
+            raise ValueError(f'Callback should return None, but it returns "{return_annotation}"')
+
         return
 
     @abstractmethod
