@@ -14,9 +14,9 @@ class HillClimber:
         self.problem = DiscretePlanningProblem(belongingFunction = self._belongingFunction,
                                                actionFunction = self._actionFunction,
                                                transitionFunction = self._transitionFunction,
+                                               costFunction=self._costFunction,
                                                initialState = initialState,
-                                               goalStates = goalStates,
-                                               costFunction = self._costFunction)
+                                               goalStates = goalStates,)
 
 
     def _belongingFunction(self, state: str) -> bool:
@@ -113,8 +113,8 @@ class HillClimber:
         return float(np.linalg.norm(coordinates_prime-coordinates))
 
     def solve(self, solver: VisualizableForwardSearch) -> str:
-            solution = solver.generateSolution()
-            if (solver.validateSolution(solution)):
-                return "Solution valid: " + solver.stringifySolution(solution)
-            else:
-                return "No Solution Exists"
+        solution = solver.generateSolution()
+        if (solver.validateSolution(solution)):
+            return "Solution valid: " + solver.stringifySolution(solution)
+        else:
+            return "No Solution Exists"
