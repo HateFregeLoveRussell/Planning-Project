@@ -5,6 +5,7 @@ from typing import Set, Callable, Dict, Optional
 from json import loads, JSONDecodeError
 from collections import defaultdict
 from inspect import signature, Signature
+from re import match
 import os
 
 
@@ -26,7 +27,20 @@ class AbstractAnimator(ABC):
             raise ValueError(f'Directory does not contain any JSON files, Directory: {json_directory}')
 
         self.dir = json_directory
-        self.json_files = sorted(self.dir.glob('*.json'))
+
+        def _extract_name_and_number(path: Path):
+            """Extracts the base name and numerical suffix from a path object."""
+            name = path.stem  # Get the file name without extension
+            mtch = match(r"(.*)_(\d+)$", name)
+            if mtch:
+                base_name = mtch.group(1)
+                number = int(mtch.group(2))
+            else:
+                base_name = name
+                number = 0
+            return base_name, number
+
+        self.json_files = sorted(self.dir.glob('*.json'), key=_extract_name_and_number)
         self.current_file_index = 0
         self.current_file = None
         self.memory = []
@@ -245,7 +259,7 @@ class AbstractAnimator(ABC):
         pass
 
     @abstractmethod
-    def save_animation(self, output_file: str):
+    def save_animation(self, output_file: Path):
         """
         Abstract method to save the generated animation to a file.
 
@@ -254,7 +268,7 @@ class AbstractAnimator(ABC):
         """
         pass
 
-    def run(self, output_file: str):
+    def run(self, output_file: Path):
         """
         Method to run the full animation process.
 

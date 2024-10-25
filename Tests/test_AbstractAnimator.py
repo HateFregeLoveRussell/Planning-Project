@@ -1,5 +1,5 @@
 import unittest
-from DiscretePlanning.Animators import AbstractAnimator
+from DiscretePlanning.Animators.AbstractAnimator import AbstractAnimator
 from pathlib import Path
 from unittest.mock import patch, MagicMock, Mock, mock_open, call, create_autospec
 from typing import Dict
@@ -179,11 +179,11 @@ class test_AbstractAnimator(unittest.TestCase):
     @patch.object(Path,attribute='exists',return_value=True)
     @patch.object(Path,attribute='glob')
     def test_AbstractAnimator_init_success(self, mock_glob, mock_exists):
-        mock_glob.return_value = [Path('test1.json'), Path('test3.json'), Path('test2.json')]
+        mock_glob.return_value = [Path('test_1.json'), Path('test_3.json'), Path('test_2.json')]
         animator = ConcreteAnimator(self.json_dir)
 
         self.assertEqual(animator.dir, self.json_dir)
-        self.assertEqual(animator.json_files, [Path('test1.json'), Path('test2.json'), Path('test3.json')])
+        self.assertEqual(animator.json_files, [Path('test_1.json'), Path('test_2.json'), Path('test_3.json')])
         self.assertEqual(animator.current_file_index , 0)
         self.assertIsNone(animator.current_file)
         self.assertEqual(animator.memory, [])
@@ -204,7 +204,7 @@ class test_AbstractAnimator(unittest.TestCase):
 
     # ~~~~ _get_next() ~~~~
     @patch.object(Path, attribute='read_text', return_value=mock_read_1)
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_get_next_success(self,mock_exists, mock_glob, mock_open):
         animator = ConcreteAnimator(self.json_dir)
@@ -314,7 +314,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator._get_next()
             self.assertTrue("Error reading file" in str(context.exception))
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     @patch.object(Path, 'read_text', side_effect=FileNotFoundError)
     def test_AbstractAnimator_get_next_fail_UnknownError(self, mock_read, mock_exists, mock_glob):
@@ -324,7 +324,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertTrue("Unexpected error in _get_next processing file" in str(context.exception))
 
     # ~~~~ _validate_event ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     @patch.object(Path, 'read_text', return_value=mock_read_combined)
     def test_AbstractAnimator_validate_event_success(self, mock_read, mock_exists, mock_glob):
@@ -337,7 +337,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator._validate_event(entry)
             entry = animator._get_next()
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_validate_event_fail_invalid_event_type(self, mock_exists, mock_glob):
         test_cases = [
@@ -358,7 +358,7 @@ class test_AbstractAnimator(unittest.TestCase):
                     animator._validate_event(event)
 
     # ~~~~ memory_subscribe() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_memory_subscribe_success(self, mock_exists, mock_glob):
         with self.subTest(event="Single Event"):
@@ -385,7 +385,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._event_to_callbackID, {"Event 1": {"-"}, "Event 3": {"-"}})
 
     # ~~~~ memory_unsubscribe() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_memory_unsubscribe_success(self, mock_exists, mock_glob):
         with self.subTest(event="Single Event"):
@@ -418,7 +418,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._event_to_callbackID, {"Event 3": {"-"}})
 
     # ~~~~ _validate_event_types_param() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_memory_subscribe_fail_invalid_type(self, mock_exists, mock_glob):
         class MyClass:
@@ -443,7 +443,7 @@ class test_AbstractAnimator(unittest.TestCase):
         return
 
     #~~~~ _validate_event_callbacks() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_validate_event_callbacks(self, mock_exists, mock_glob):
         callable_test_cases = [
@@ -464,7 +464,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator._validate_event_callbacks(correct_test_case[1])
 
     # ~~~~ subscribe_to_event() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_subscribe_to_event_success_single_callback(self, mock_exists, mock_glob):
         callback1 = lambda x: print(f"Received: {x}")
@@ -504,7 +504,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._callbackID_to_Callback, {"Callback 1": callback2, "-": animator._memory_callback})
         return
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_subscribe_to_event_success_multiple_callbacks(self, mock_exists, mock_glob):
         callback1 = lambda x: print(f"Received: {x}")
@@ -571,7 +571,7 @@ class test_AbstractAnimator(unittest.TestCase):
                 "-": animator._memory_callback
             })
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_subscribe_to_event_fail_invalid_input(self, mock_exists, mock_glob):
         valid_callback = lambda x: None
@@ -581,7 +581,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator.subscribe_to_event({"Event 1", "Event 3"}, valid_callback, 12)
 
     # ~~~~ unsubscribe_from_event() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_unsubscribe_from_event_success_single_callback(self, mock_exists, mock_glob):
         with self.subTest(event="Single Event"):
@@ -606,7 +606,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
         return
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_unsubscribe_from_event_success_multiple_callbacks(self, mock_exists, mock_glob):
         callback1 = lambda x: print(f"Received: {x}")
@@ -641,7 +641,7 @@ class test_AbstractAnimator(unittest.TestCase):
             self.assertEqual(animator._event_to_callbackID, {})
             self.assertEqual(animator._callbackID_to_Callback, {"-": animator._memory_callback})
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_unsubscribe_from_event_fail_invalid_input(self, mock_exists, mock_glob):
         with self.assertRaisesRegex(TypeError, 'Callback ID Should be of Type String is instead ".+"'):
@@ -649,7 +649,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator.unsubscribe_from_event({"Event 1", "Event 3"}, 12)
 
     # ~~~~ _handle_event() ~~~~
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_handle_event_single_callable(self, mock_exists, mock_glob):
         def callback_function(input: Dict):
@@ -702,7 +702,7 @@ class test_AbstractAnimator(unittest.TestCase):
             animator._handle_event(data[0])
             callback1.assert_has_calls([call(data[0]), call(data[1]), call(data[1])], any_order=False)
 
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_handle_event_multiple_callables(self, mock_exists, mock_glob):
         def callback_function(input: Dict):
@@ -785,7 +785,7 @@ class test_AbstractAnimator(unittest.TestCase):
                                        any_order=True)
 
     # ~~~~ run() ~~~~@patch.object(Path, attribute='read_text', return_value=mock_read_1)
-    @patch.object(Path, attribute='glob', return_value=[Path('test1.json')])
+    @patch.object(Path, attribute='glob', return_value=[Path('test_1.json')])
     @patch.object(Path, attribute='exists', return_value=True)
     def test_AbstractAnimator_run_integration_success_static(self, mock_exists, mock_glob):
         events = {
