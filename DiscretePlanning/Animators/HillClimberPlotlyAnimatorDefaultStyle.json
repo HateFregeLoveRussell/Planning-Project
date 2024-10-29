@@ -1,0 +1,106 @@
+{"mesh": {
+  "colorscale" : "Inferno",
+  "showscale" : false,
+  "opacity" : 0.8
+},
+  "contours": {
+    "show": true,
+    "start": 0,
+    "size": 1,
+    "color": "grey",
+    "width": 2
+  },
+  "updatemenus":[
+            {
+                "buttons": [
+                    {
+                        "args": [null, {"frame": {"duration": 500, "redraw": true}, "fromcurrent": true}],
+                        "label": "Play",
+                        "method": "animate"
+                    },
+                    {
+                        "args": [[null], {"frame": {"duration": 0, "redraw": true}, "mode": "immediate",
+                                          "transition": {"duration": 0}}],
+                        "label": "Pause",
+                        "method": "animate"
+                    }
+                ],
+                "direction": "left",
+                "pad": {"r": 10, "t": 87},
+                "showactive": false,
+                "type": "buttons",
+                "x": 0.1,
+                "xanchor": "right",
+                "y": 0,
+                "yanchor": "top"
+            }
+        ],
+  "sliders":  {"active": 0,
+    "yanchor": "top",
+    "xanchor": "left",
+    "currentvalue": {
+      "font": {"size": 20},
+      "prefix": "Frame:",
+      "visible": true,
+      "xanchor": "right"
+    },
+    "transition": {"duration": 100, "easing": "cubic-in-out"},
+    "pad": {"b": 10, "t": 50},
+    "len": 0.9,
+    "x": 0.1,
+    "y": 0
+  },
+  "visitation scatter": {
+      "mode" : "markers",
+      "marker" : {"size":5, "color":"lightsteelblue", "opacity":1},
+      "showlegend": false
+  },
+  "new state color": "palegreen",
+  "initial state color": "sandybrown",
+  "goal state color": "#ff0000",
+  "solution path" : {
+    "mode" :"lines+markers",
+    "marker": {
+      "size" : 7,
+      "color" :"#ff0000",
+      "opacity" : 1
+    },
+    "line" : {
+      "color" : "#ff0000",
+      "dash" : "solid",
+      "width" : 6
+    },
+    "showlegend" : false
+  },
+  "png dimensions": {
+    "width" : 1920,
+    "height": 1080,
+    "scale" : 1
+  },
+  "png layout": {
+    "scene_camera" : {
+      "center" : {"x": 0, "y": 0, "z": 0},
+      "eye" : {"x": -0.3487493342222896, "y":-0.6608514109946273, "z":2.03208385018485},
+      "up" : {"x": 0, "y": 0, "z": 1},
+      "projection" : {"type" :"perspective"}
+    },
+    "scene": {
+      "xaxis" : {"showbackground": false},
+      "yaxis" : {"showbackground": false},
+      "zaxis" : {"visible": false}
+    },
+    "showlegend": false,
+    "margin": {"l": 20, "r": 20, "t": 20, "b": 20}
+
+  },
+  "gif options": {
+        "program": "imageio",
+        "fps":  15
+  },
+  "mp4 options": {
+      "codec":"libx264",
+      "audio":false,
+      "fps": 15
+  }
+}
+
