@@ -9,6 +9,9 @@ from json import loads
 from moviepy.editor import ImageSequenceClip
 import threading
 
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+from mpl_toolkits.mplot3d import Axes3D
 
 class HillClimberPlotlyAnimator(AbstractAnimator):
     def __init__(self, logFiles_dir: Path, styles_dir: Path, env : HillClimber, thread_num : int=1, print_option=True):
@@ -227,3 +230,86 @@ class HillClimberPlotlyAnimator(AbstractAnimator):
         self.fig.write_html(save_dir)
         # self.fig.show()
 
+class HillClimberMatplotlibAnimator(AbstractAnimator):
+    def __init__(self, logFiles_dir: Path, styles_dir: Path, env : HillClimber, print_option=True):
+        super().__init__(logFiles_dir)
+        #set up figure
+        self.fig, self.ax = plt.subplots(subplot_kw={'projection' : '3d'})
+        self.print_option = print_option
+
+        #set up dynamic Axes features
+        self.visitation_scatter = self.ax.scatter([], [], [], c='grey', marker='o')
+
+        #grab information from env
+        self.initial_state = literal_eval(env.problem.initialState)
+        self.goalStates = env.problem.goalStates
+        self.size = env.size
+        self.height_function = env.height_function
+
+        self.frames = []
+
+    def setup_animation(self):
+        x, y = np.arange(0, self.size[0], 1), np.arange(0,self.size[1], 1)
+        x, y = np.meshgrid(x, y)
+        z = np.vectorize(self.height_function)(x, y)
+
+        # the following elements are static in the animation so they are declared here
+        # surface mesh
+        self.ax.plot_surface(x,y,z , cmap='viridis', zorder= 1)
+        # initial state scatter
+        self.ax.scatter(self.initial_state[0], self.initial_state[1], self.height_function(self.initial_state[0], self.initial_state[1]), c='r', marker='o', zorder =2)
+        # goal state(s) scatter
+        x_goal = [literal_eval(goal_state)[0] for goal_state in self.goalStates]
+        y_goal = [literal_eval(goal_state)[1] for goal_state in self.goalStates]
+        z_goal = [self.height_function(x_g, y_g) for x_g, y_g in zip(x_goal, y_goal)]
+        self.ax.scatter(x_goal, y_goal, z_goal, c='r', marker='o', zorder = 2)
+
+        #Assigning Callbacks
+        callbacks_calls =  [
+            (
+                {"Successor Not Previously Visited, Added to Memory"},
+                self.generate_visitation_frame,
+                "Generate Visitation Frame"
+            ),
+            (
+                {"Solution Generated"},
+                self.generate_solution_frame,
+                "Generate Solution Frame"
+            )
+        ]
+        for callSet, callback, name in callbacks_calls:
+            self.subscribe_to_event(callSet, callback, name)
+
+    def generate_visitation_frame(self, event: Dict):
+        # print(f'Visitation Frame Call on frame: {len(self.frames)}')
+        visited_states = list(event["Entry"]["Visitation Table"].keys())
+        visited_states = [literal_eval(state) for state in visited_states]
+        # take transpose of visited states matrix to extract coordinates
+        x, y = zip(*visited_states)
+        x = list(x)
+        y = list(y)
+        z = np.vectorize(self.height_function)(x, y)
+
+        # special point to be colored differently
+        specialPoint = literal_eval(event["Entry"]["Successor"])
+        colors = ['orange' if (x_pick,y_pick) == specialPoint else 'grey' for x_pick,y_pick in zip(x,y)]
+        self.frames.append({'x': x, 'y': y, 'z': z, 'color': colors, 'name': 'generate_visitation_frame'})
+
+
+    def generate_solution_frame(self, event: Dict):
+        pass
+
+    def _update(self, frame):
+        # print("Update Function Called")
+        if frame['name'] == "generate_visitation_frame":
+            #remove old scatter plot
+            self.visitation_scatter.remove()
+            #plot new scatter plot
+            self.visitation_scatter = self.ax.scatter(frame['x'], frame['y'], frame['z'] + 0.01, c=frame['color'],alpha=1, marker='o', zorder =3)
+            return self.visitation_scatter,
+        return
+    def save_animation(self, save_dir: Path):
+        # print("Log File Parsed Starting Matplotlib Animation")
+        self.ani = FuncAnimation(fig=self.fig, func=self._update, frames=self.frames, interval=100, blit=True)
+        # print("Saving Animation")
+        self.ani.save(save_dir, writer='ffmpeg')
