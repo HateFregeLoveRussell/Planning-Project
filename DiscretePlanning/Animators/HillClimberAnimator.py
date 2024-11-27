@@ -12,7 +12,7 @@ import threading
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from mpl_toolkits.mplot3d import Axes3D
-
+from matplotlib.colors import  to_rgb
 class HillClimberPlotlyAnimator(AbstractAnimator):
     def __init__(self, logFiles_dir: Path, styles_dir: Path, env : HillClimber, thread_num : int=1, print_option=True):
         super().__init__(logFiles_dir)
@@ -234,7 +234,7 @@ class HillClimberMatplotlibAnimator(AbstractAnimator):
     def __init__(self, logFiles_dir: Path, styles_dir: Path, env : HillClimber, print_option=True):
         super().__init__(logFiles_dir)
         #set up figure
-        self.fig, self.ax = plt.subplots(subplot_kw={'projection' : '3d'})
+        self.fig, self.ax = plt.subplots()
         self.print_option = print_option
 
         #set up dynamic Axes features
@@ -255,7 +255,7 @@ class HillClimberMatplotlibAnimator(AbstractAnimator):
 
         # the following elements are static in the animation so they are declared here
         # surface mesh
-        self.ax.plot_surface(x,y,z , cmap='viridis', zorder= 1)
+        self.ax.imshow(z , cmap='inferno', origin= 'lower')
         # initial state scatter
         self.ax.scatter(self.initial_state[0], self.initial_state[1], self.height_function(self.initial_state[0], self.initial_state[1]), c='r', marker='o', zorder =2)
         # goal state(s) scatter
@@ -292,7 +292,7 @@ class HillClimberMatplotlibAnimator(AbstractAnimator):
 
         # special point to be colored differently
         specialPoint = literal_eval(event["Entry"]["Successor"])
-        colors = ['orange' if (x_pick,y_pick) == specialPoint else 'grey' for x_pick,y_pick in zip(x,y)]
+        colors = ['palegreen' if (x_pick,y_pick) == specialPoint else 'grey' for x_pick,y_pick in zip(x,y)]
         self.frames.append({'x': x, 'y': y, 'z': z, 'color': colors, 'name': 'generate_visitation_frame'})
 
 
